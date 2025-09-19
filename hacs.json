@@ -1,0 +1,8 @@
+{
+    "name": "Eco Battery Card",
+    "content_in_root": true,
+    "render_readme": true,
+    "homeassistant": "2024.6.0",
+    "filename": "eco-battery-card.js"
+  }
+  
