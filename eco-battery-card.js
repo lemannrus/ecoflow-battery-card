@@ -92,11 +92,26 @@ class EcoBatteryCard extends LitBase {
     const innerW = bodyW - 12;
     const innerH = bodyH - 12;
 
-    const fillH = Math.round((pct / 100) * innerH);
-    const fillY = innerY + innerH - fillH; // bottom-up fill
-
     const label = this._config.name || this._friendlyName();
     const stateText = `${pct.toFixed(this._config.precision)}%`;
+
+    // Create segments for battery fill
+    const numSegments = 10;
+    const segmentHeight = (innerH - (numSegments - 1) * 2) / numSegments; // 2px gap between segments
+    const filledSegments = Math.ceil((pct / 100) * numSegments);
+    
+    const segments = [];
+    for (let i = 0; i < numSegments; i++) {
+      const segmentY = innerY + innerH - (i + 1) * (segmentHeight + 2) + 2;
+      const isFilled = i < filledSegments;
+      const segmentColor = isFilled ? color : 'var(--divider-color, #e0e0e0)';
+      const opacity = isFilled ? 1 : 0.3;
+      
+      segments.push(html`
+        <rect x="${innerX + 2}" y="${segmentY}" width="${innerW - 4}" height="${segmentHeight}"
+              rx="2" ry="2" fill="${segmentColor}" opacity="${opacity}" class="segment" />
+      `);
+    }
 
     return html`
       <ha-card .header=${label} class="eco-card">
@@ -112,19 +127,21 @@ class EcoBatteryCard extends LitBase {
             <!-- Inner background -->
             <rect x="${innerX}" y="${innerY}" width="${innerW}" height="${innerH}" class="inner-bg" />
 
-            <!-- Fill -->
-            <rect x="${innerX}" y="${fillY}" width="${innerW}" height="${fillH}"
-                  class="fill" style="fill:${color}" />
+            <!-- Battery segments -->
+            ${segments}
 
             <!-- Ticks -->
             ${[0,25,50,75,100].map(v => {
               const y = innerY + innerH - Math.round((v/100)*innerH);
-              return html`<line x1="${innerX}" x2="${innerX+innerW}" y1="${y}" y2="${y}" class="tick" />`;
+              return html`<line x1="${innerX-2}" x2="${innerX+2}" y1="${y}" y2="${y}" class="tick" />`;
             })}
 
-            <!-- Percentage text -->
+            <!-- Large percentage text in center -->
+            <text x="${bodyX + bodyW/2}" y="${bodyY + bodyH/2 + 8}" text-anchor="middle" class="pct-large">${stateText}</text>
+            
+            <!-- Additional sensor value display -->
             ${this._config.show_state ? html`
-              <text x="${bodyX + bodyW/2}" y="${bodyY + bodyH/2 + 6}" text-anchor="middle" class="pct">${stateText}</text>
+              <text x="${bodyX + bodyW/2}" y="${bodyY + bodyH + 20}" text-anchor="middle" class="pct-small">Battery Level</text>
             ` : ''}
           </svg>
         </div>
@@ -149,9 +166,21 @@ class EcoBatteryCard extends LitBase {
       .case { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.8; }
       .cap { fill: var(--primary-text-color); opacity: 0.7; }
       .inner-bg { fill: var(--card-background-color); stroke: var(--divider-color); stroke-width: 1; }
-      .fill { transition: all 300ms ease; }
-      .tick { stroke: var(--divider-color); stroke-width: 0.5; opacity: 0.6; }
-      .pct { fill: var(--primary-text-color); font-weight: 600; font-size: 20px; }
+      .segment { transition: all 300ms ease; }
+      .tick { stroke: var(--divider-color); stroke-width: 1; opacity: 0.6; }
+      .pct-large { 
+        fill: var(--primary-text-color); 
+        font-weight: 700; 
+        font-size: 28px; 
+        text-shadow: 0 0 3px var(--card-background-color);
+        dominant-baseline: central;
+      }
+      .pct-small { 
+        fill: var(--secondary-text-color); 
+        font-weight: 500; 
+        font-size: 12px; 
+        opacity: 0.8;
+      }
     `;
   }
 
