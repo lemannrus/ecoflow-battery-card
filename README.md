@@ -15,6 +15,8 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 ## 🖼️ Screenshot
 
+![Eco Battery Card screenshot](./assets/eco-battery-card.png)
+
 The card displays a battery icon with:
 - Battery outline and terminal cap
 - Vertical segments (columns) that fill left-to-right based on charge level

@@ -88,7 +88,7 @@ class EcoBatteryCard extends LitBase {
     // SVG geometry
     const W = 220; // total width
     const H = 130; // total height
-    const PAD = 16;
+    const PAD = 8; // compact outer padding
     const bodyX = PAD;
     const bodyY = PAD;
     const bodyW = 160;
@@ -178,7 +178,8 @@ class EcoBatteryCard extends LitBase {
 
   static get styles() {
     return css`
-      .wrap { display: grid; place-items: center; padding: 0px 0 0px; }
+      .wrap { display: grid; place-items: center; padding: 0; }
+      ha-card.eco-card { padding: 6px 8px 8px; }
       svg { width: 100%; max-width: 460px; height: auto; }
       .case { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.85; }
       .cap { fill: var(--primary-text-color); opacity: 0.8; }
