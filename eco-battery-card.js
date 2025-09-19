@@ -117,14 +117,20 @@ class EcoBatteryCard extends LitBase {
     const partialFrac = progressCols - fullCols; // 0..1 for the partially filled column
 
     const segments = [];
+    const createRect = (attrs) => {
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      for (const [k, v] of Object.entries(attrs)) {
+        r.setAttribute(k, String(v));
+      }
+      return r;
+    };
     for (let i = 0; i < numSegments; i++) {
       const x = innerX + i * (segmentW + gap);
       // column background
-      segments.push(svg`
-        <rect x="${x}" y="${innerY}" width="${segmentW}" height="${innerH}"
-              rx="3" ry="3" fill="#333333" class="segment"
-              stroke="rgba(255,255,255,0.2)" stroke-width="1" />
-      `);
+      segments.push(createRect({
+        x, y: innerY, width: segmentW, height: innerH, rx: 3, ry: 3,
+        fill: '#333333', class: 'segment', stroke: 'rgba(255,255,255,0.2)', 'stroke-width': 1,
+      }));
       // fill left-to-right
       let w = 0;
       if (i < fullCols) {
@@ -133,10 +139,10 @@ class EcoBatteryCard extends LitBase {
         w = Math.max(0, Math.min(segmentW, segmentW * partialFrac));
       }
       if (w > 0) {
-        segments.push(svg`
-          <rect x="${x}" y="${innerY}" width="${w}" height="${innerH}"
-                rx="3" ry="3" fill="${color}" class="segment" />
-        `);
+        segments.push(createRect({
+          x, y: innerY, width: w, height: innerH, rx: 3, ry: 3,
+          fill: color, class: 'segment',
+        }));
       }
     }
 
@@ -172,7 +178,7 @@ class EcoBatteryCard extends LitBase {
 
   static get styles() {
     return css`
-      .wrap { display: grid; place-items: center; padding: 8px 0 12px; }
+      .wrap { display: grid; place-items: center; padding: 0px 0 0px; }
       svg { width: 100%; max-width: 460px; height: auto; }
       .case { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.85; }
       .cap { fill: var(--primary-text-color); opacity: 0.8; }
