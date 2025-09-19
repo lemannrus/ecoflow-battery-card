@@ -160,10 +160,6 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🏷️ Version
-
-**Current Version**: 0.1.5
-
 ## 🙏 Credits
 
 - Built with Lit-based components for seamless Home Assistant integration
