@@ -50,6 +50,7 @@ class EcoBatteryCard extends LitBase {
       segments: Number.isFinite(config.segments) ? Math.max(1, Math.floor(config.segments)) : 5,
       gap: Number.isFinite(config.gap) ? Math.max(0, config.gap) : 3,
       orientation: ['horizontal','vertical'].includes(config.orientation) ? config.orientation : 'horizontal',
+      width: Number.isFinite(config.width) ? Math.max(120, config.width) : 300,
     };
   }
 
@@ -150,7 +151,7 @@ class EcoBatteryCard extends LitBase {
     return html`
       <ha-card .header=${label} class="eco-card">
         <div class="wrap">
-          <svg viewBox="0 0 ${W} ${H}" part="svg" class="${this._config.orientation === 'vertical' ? 'vertical' : ''}">
+          <svg viewBox="0 0 ${W} ${H}" part="svg" class="${this._config.orientation === 'vertical' ? 'vertical' : ''}" style="width:100%;max-width:${this._config.width}px;height:auto;">
             <!-- Battery body -->
             <rect x="${bodyX}" y="${bodyY}" rx="10" ry="10" width="${bodyW}" height="${bodyH}" class="case" />
             <!-- Battery cap -->
@@ -181,7 +182,7 @@ class EcoBatteryCard extends LitBase {
     return css`
       .wrap { display: grid; place-items: center; padding: 0; }
       ha-card.eco-card { padding: 6px 8px 8px; }
-      svg { width: 100%; max-width: 300px; height: auto; }
+      svg { width: 100%; height: auto; }
       svg.vertical { transform: rotate(270deg); transform-origin: 50% 50%; }
       .case { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.85; }
       .cap { fill: var(--primary-text-color); opacity: 0.8; }
