@@ -49,6 +49,7 @@ class EcoBatteryCard extends LitBase {
       palette: ['threshold','gradient'].includes(config.palette) ? config.palette : 'threshold',
       segments: Number.isFinite(config.segments) ? Math.max(1, Math.floor(config.segments)) : 5,
       gap: Number.isFinite(config.gap) ? Math.max(0, config.gap) : 3,
+      orientation: ['horizontal','vertical'].includes(config.orientation) ? config.orientation : 'horizontal',
     };
   }
 
@@ -91,8 +92,8 @@ class EcoBatteryCard extends LitBase {
     const PAD = 8; // compact outer padding
     const bodyX = PAD;
     const bodyY = PAD;
-    const bodyW = 160;
-    const bodyH = 90;
+    const bodyW = 100;
+    const bodyH = 70;
 
     const capW = 12;
     const capH = 28;
@@ -149,11 +150,11 @@ class EcoBatteryCard extends LitBase {
     return html`
       <ha-card .header=${label} class="eco-card">
         <div class="wrap">
-          <svg viewBox="0 0 ${W} ${H}" part="svg">
+          <svg viewBox="0 0 ${W} ${H}" part="svg" class="${this._config.orientation === 'vertical' ? 'vertical' : ''}">
             <!-- Battery body -->
             <rect x="${bodyX}" y="${bodyY}" rx="10" ry="10" width="${bodyW}" height="${bodyH}" class="case" />
             <!-- Battery cap -->
-            <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}" class="cap" />
+            <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}" class="cap ${this._config.orientation === 'vertical' ? 'vertical' : ''}" />
 
             <!-- Inner area -->
             <rect x="${innerX}" y="${innerY}" rx="3" ry="3" width="${innerW}" height="${innerH}" class="inner-bg" />
@@ -180,7 +181,8 @@ class EcoBatteryCard extends LitBase {
     return css`
       .wrap { display: grid; place-items: center; padding: 0; }
       ha-card.eco-card { padding: 6px 8px 8px; }
-      svg { width: 100%; max-width: 460px; height: auto; }
+      svg { width: 100%; max-width: 300px; height: auto; }
+      svg.vertical { transform: rotate(270deg); transform-origin: 50% 50%; }
       .case { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.85; }
       .cap { fill: var(--primary-text-color); opacity: 0.8; }
       .inner-bg { fill: #000000; stroke: var(--divider-color); stroke-width: 0; }
@@ -188,10 +190,11 @@ class EcoBatteryCard extends LitBase {
       .pct { 
         fill: var(--primary-text-color); 
         font-weight: 700; 
-        font-size: 26px; 
+        font-size: 18px; 
         text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);
         filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
       }
+      svg.vertical .pct { transform: rotate(90deg); transform-box: fill-box; transform-origin: 50% 50%; }
     `;
   }
 
