@@ -1,24 +1,30 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
- * Author: ChatGPT (for Alex, who definitely has better things to do)
- * Version: 0.1.0
+ * Author: ChatGPT (for Alex, who likes order in the battery chaos)
+ * Version: 0.2.0
  *
  * Config example:
  * type: custom:eco-battery-card
  * entity: sensor.ecoflow_battery
  * name: EcoFlow Delta 2
- * green: 60      # >= this -> green
- * yellow: 25     # >= this and < green -> yellow; below -> red
+ * green: 60        # green threshold (for palette: 'threshold')
+ * yellow: 25       # yellow threshold (for palette: 'threshold')
+ * palette: gradient  # 'threshold' | 'gradient'
+ * segments: 5      # number of battery segments
+ * gap: 3           # gap between segments in px
+ * precision: 0
  * show_state: true
+ * invert: false
  */
 
-/* Grab Lit helpers from HA (stable pattern used by many cards) */
+/* Lit helpers from HA (pattern used by many cards) */
 const LitBase = customElements.get('ha-panel-lovelace')
   ? Object.getPrototypeOf(customElements.get('ha-panel-lovelace'))
   : Object.getPrototypeOf(customElements.get('hui-masonry-view'));
 
 const html = LitBase.prototype.html;
 const css = LitBase.prototype.css;
+const svg = LitBase.prototype.svg || ((strings, ...values) => strings.raw ? strings : strings);
 
 class EcoBatteryCard extends LitBase {
   static get properties() {
@@ -30,29 +36,29 @@ class EcoBatteryCard extends LitBase {
 
   setConfig(config) {
     if (!config || !config.entity) {
-      throw new Error('Вы должны указать entity с процентом заряда (0..100).');
+      throw new Error('You must specify an entity with a battery percentage (0..100).');
     }
     this._config = {
       name: config.name || '',
       entity: config.entity,
-      green: typeof config.green === 'number' ? config.green : 50,
-      yellow: typeof config.yellow === 'number' ? config.yellow : 20,
+      green: typeof config.green === 'number' ? config.green : 60,
+      yellow: typeof config.yellow === 'number' ? config.yellow : 25,
       show_state: config.show_state !== false,
       precision: typeof config.precision === 'number' ? config.precision : 0,
-      invert: !!config.invert, // if your sensor is 0 when full, 100 when empty (why), set true
+      invert: !!config.invert,
+      palette: ['threshold','gradient'].includes(config.palette) ? config.palette : 'threshold',
+      segments: Number.isFinite(config.segments) ? Math.max(1, Math.floor(config.segments)) : 5,
+      gap: Number.isFinite(config.gap) ? Math.max(0, config.gap) : 3,
     };
   }
 
-  getCardSize() {
-    return 3;
-  }
+  getCardSize() { return 3; }
 
   _pct() {
     const st = this.hass?.states?.[this._config.entity];
     if (!st) return 0;
     let n = Number(st.state);
     if (Number.isNaN(n)) {
-      // try attribute 'battery' or 'level'
       n = Number(st.attributes?.battery ?? st.attributes?.level ?? 0);
     }
     if (this._config.invert) n = 100 - n;
@@ -61,6 +67,12 @@ class EcoBatteryCard extends LitBase {
   }
 
   _color(p) {
+    if (this._config.palette === 'gradient') {
+      // 0% -> красный (0deg), 100% -> зелёный (120deg)
+      const h = Math.round((p / 100) * 120);
+      return `hsl(${h} 65% 45%)`;
+    }
+    // threshold
     const y = this._config.yellow;
     const g = this._config.green;
     if (p < y) return 'var(--error-color, #e53935)';
@@ -74,16 +86,16 @@ class EcoBatteryCard extends LitBase {
     const color = this._color(pct);
 
     // SVG geometry
-    const W = 200; // total width
-    const H = 110; // total height
+    const W = 220; // total width
+    const H = 130; // total height
     const PAD = 16;
     const bodyX = PAD;
     const bodyY = PAD;
-    const bodyW = 150;
-    const bodyH = 78;
+    const bodyW = 160;
+    const bodyH = 90;
 
     const capW = 12;
-    const capH = 26;
+    const capH = 28;
     const capX = bodyX + bodyW + 4;
     const capY = bodyY + (bodyH - capH) / 2;
 
@@ -95,22 +107,37 @@ class EcoBatteryCard extends LitBase {
     const label = this._config.name || this._friendlyName();
     const stateText = `${pct.toFixed(this._config.precision)}%`;
 
-    // Create segments for battery fill
-    const numSegments = 10;
-    const segmentHeight = (innerH - (numSegments - 1) * 2) / numSegments; // 2px gap between segments
-    const filledSegments = Math.ceil((pct / 100) * numSegments);
-    
+    // Battery segments (vertical columns), fill left-to-right
+    const numSegments = this._config.segments;
+    const gap = this._config.gap;
+    const segmentW = (innerW - (numSegments - 1) * gap) / numSegments;
+
+    const progressCols = (pct / 100) * numSegments; // how many columns correspond to percentage
+    const fullCols = Math.floor(progressCols);
+    const partialFrac = progressCols - fullCols; // 0..1 for the partially filled column
+
     const segments = [];
     for (let i = 0; i < numSegments; i++) {
-      const segmentY = innerY + innerH - (i + 1) * (segmentHeight + 2) + 2;
-      const isFilled = i < filledSegments;
-      const segmentColor = isFilled ? color : 'var(--divider-color, #e0e0e0)';
-      const opacity = isFilled ? 1 : 0.3;
-      
-      segments.push(html`
-        <rect x="${innerX + 2}" y="${segmentY}" width="${innerW - 4}" height="${segmentHeight}"
-              rx="2" ry="2" fill="${segmentColor}" opacity="${opacity}" class="segment" />
+      const x = innerX + i * (segmentW + gap);
+      // column background
+      segments.push(svg`
+        <rect x="${x}" y="${innerY}" width="${segmentW}" height="${innerH}"
+              rx="3" ry="3" fill="#333333" class="segment"
+              stroke="rgba(255,255,255,0.2)" stroke-width="1" />
       `);
+      // fill left-to-right
+      let w = 0;
+      if (i < fullCols) {
+        w = segmentW;
+      } else if (i === fullCols && partialFrac > 0) {
+        w = Math.max(0, Math.min(segmentW, segmentW * partialFrac));
+      }
+      if (w > 0) {
+        segments.push(svg`
+          <rect x="${x}" y="${innerY}" width="${w}" height="${innerH}"
+                rx="3" ry="3" fill="${color}" class="segment" />
+        `);
+      }
     }
 
     return html`
@@ -118,31 +145,20 @@ class EcoBatteryCard extends LitBase {
         <div class="wrap">
           <svg viewBox="0 0 ${W} ${H}" part="svg">
             <!-- Battery body -->
-            <rect x="${bodyX}" y="${bodyY}" rx="8" ry="8" width="${bodyW}" height="${bodyH}"
-                  class="case" />
+            <rect x="${bodyX}" y="${bodyY}" rx="10" ry="10" width="${bodyW}" height="${bodyH}" class="case" />
             <!-- Battery cap -->
-            <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}"
-                  class="cap" />
+            <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}" class="cap" />
 
-            <!-- Inner background -->
-            <rect x="${innerX}" y="${innerY}" width="${innerW}" height="${innerH}" class="inner-bg" />
+            <!-- Inner area -->
+            <rect x="${innerX}" y="${innerY}" rx="3" ry="3" width="${innerW}" height="${innerH}" class="inner-bg" />
 
-            <!-- Battery segments -->
+            <!-- Segments -->
             ${segments}
 
-            <!-- Ticks -->
-            ${[0,25,50,75,100].map(v => {
-              const y = innerY + innerH - Math.round((v/100)*innerH);
-              return html`<line x1="${innerX-2}" x2="${innerX+2}" y1="${y}" y2="${y}" class="tick" />`;
-            })}
-
-            <!-- Large percentage text in center -->
-            <text x="${bodyX + bodyW/2}" y="${bodyY + bodyH/2 + 8}" text-anchor="middle" class="pct-large">${stateText}</text>
+            <!-- Percentage centered -->
+            <text x="${bodyX + bodyW/2}" y="${bodyY + bodyH/2}"
+                  text-anchor="middle" dominant-baseline="central" class="pct" fill="white">${stateText}</text>
             
-            <!-- Additional sensor value display -->
-            ${this._config.show_state ? html`
-              <text x="${bodyX + bodyW/2}" y="${bodyY + bodyH + 20}" text-anchor="middle" class="pct-small">Battery Level</text>
-            ` : ''}
           </svg>
         </div>
       </ha-card>
@@ -156,45 +172,27 @@ class EcoBatteryCard extends LitBase {
 
   static get styles() {
     return css`
-      ha-card.eсo-card { /* unicode-escape to avoid weird minifiers */ }
-      .wrap {
-        display: grid;
-        place-items: center;
-        padding: 8px 0 12px;
-      }
-      svg { width: 100%; max-width: 420px; height: auto; }
-      .case { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.8; }
-      .cap { fill: var(--primary-text-color); opacity: 0.7; }
-      .inner-bg { fill: var(--card-background-color); stroke: var(--divider-color); stroke-width: 1; }
-      .segment { transition: all 300ms ease; }
-      .tick { stroke: var(--divider-color); stroke-width: 1; opacity: 0.6; }
-      .pct-large { 
+      .wrap { display: grid; place-items: center; padding: 8px 0 12px; }
+      svg { width: 100%; max-width: 460px; height: auto; }
+      .case { fill: none; stroke: var(--primary-text-color); stroke-width: 3; opacity: 0.85; }
+      .cap { fill: var(--primary-text-color); opacity: 0.8; }
+      .inner-bg { fill: #000000; stroke: var(--divider-color); stroke-width: 0; }
+      .segment { transition: opacity 250ms ease, fill 250ms ease; }
+      .pct { 
         fill: var(--primary-text-color); 
         font-weight: 700; 
-        font-size: 28px; 
-        text-shadow: 0 0 3px var(--card-background-color);
-        dominant-baseline: central;
-      }
-      .pct-small { 
-        fill: var(--secondary-text-color); 
-        font-weight: 500; 
-        font-size: 12px; 
-        opacity: 0.8;
+        font-size: 26px; 
+        text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);
+        filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
       }
     `;
   }
 
-  static getStubConfig() {
-    return {
-      entity: 'sensor.battery_level',
-      name: 'EcoFlow',
-    };
-  }
+  static getStubConfig() { return { entity: 'sensor.battery_level', name: 'EcoFlow' }; }
 }
 
 if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-// Optional: expose version in console for the three people who care
-console.info('%c ECO-BATTERY-CARD %c v0.1.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.2.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');

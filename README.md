@@ -4,7 +4,7 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 ## ✨ Features
 
-- **Visual Battery Display**: Animated SVG battery icon with bottom-up fill animation
+- **Visual Battery Display**: SVG battery with segmented columns that fill left-to-right
 - **Color-Coded Status**: Green (good), yellow (warning), red (critical) battery levels
 - **Configurable Thresholds**: Customize when colors change based on your needs
 - **Flexible Entity Support**: Works with any percentage-based sensor (0-100%)
@@ -17,9 +17,9 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 The card displays a battery icon with:
 - Battery outline and terminal cap
-- Percentage fill that animates based on charge level
+- Vertical segments (columns) that fill left-to-right based on charge level
 - Optional percentage text overlay
-- Tick marks for easy reading (0%, 25%, 50%, 75%, 100%)
+- Theme-aware colors (uses your HA theme CSS variables)
 
 ## 📦 Installation
 
@@ -65,6 +65,9 @@ yellow: 25       # Battery level >= 25% and < 60% shows yellow
 show_state: true # Show percentage text on battery
 precision: 1     # Decimal places for percentage (0 = whole numbers)
 invert: false    # Set to true if your sensor reports 0=full, 100=empty
+segments: 5      # Number of vertical columns
+gap: 3           # Gap between columns in px
+palette: threshold  # 'threshold' | 'gradient'
 ```
 
 ## ⚙️ Configuration Options
@@ -73,11 +76,14 @@ invert: false    # Set to true if your sensor reports 0=full, 100=empty
 |--------|------|---------|-------------|
 | `entity` | string | **Required** | The entity ID of your battery sensor |
 | `name` | string | Entity friendly name | Display name for the card |
-| `green` | number | `50` | Battery percentage threshold for green color |
-| `yellow` | number | `20` | Battery percentage threshold for yellow color |
+| `green` | number | `60` | Battery percentage threshold for green color |
+| `yellow` | number | `25` | Battery percentage threshold for yellow color |
 | `show_state` | boolean | `true` | Whether to display percentage text on battery |
 | `precision` | number | `0` | Number of decimal places for percentage display |
 | `invert` | boolean | `false` | Invert the battery reading (for sensors that report inversely) |
+| `segments` | number | `5` | Number of vertical columns in the battery |
+| `gap` | number | `3` | Gap between columns in pixels |
+| `palette` | string | `threshold` | Color mode: `threshold` (red/yellow/green) or `gradient` |
 
 ## 🔌 Compatible Sensors
 
@@ -154,7 +160,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏷️ Version
 
-**Current Version**: 0.1.0
+**Current Version**: 0.2.0
 
 ## 🙏 Credits
 
