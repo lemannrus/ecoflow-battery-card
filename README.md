@@ -1,6 +1,26 @@
 # EcoFlow Battery Card for Home Assistant
 
-A custom Lovelace card for Home Assistant that displays EcoFlow battery levels with a beautiful battery icon. This card provides an intuitive visual representation of your EcoFlow power station's battery status with color-coded indicators.
+<!-- Badges -->
+<p align="left">
+  <!-- Replace OWNER/REPO below when you publish to GitHub -->
+  <a href="https://github.com/lemannrus/ecoflow-battery-card/releases">
+    <img alt="GitHub release" src="https://img.shields.io/github/v/release/lemannrus/ecoflow-battery-card?logo=github" />
+  </a>
+  <a href="https://github.com/lemannrus/ecoflow-battery-card/releases">
+    <img alt="Downloads" src="https://img.shields.io/github/downloads/lemannrus/ecoflow-battery-card/total?logo=github" />
+  </a>
+  <a href="https://hacs.xyz/">
+    <img alt="HACS" src="https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistant&logoColor=white" />
+  </a>
+  <a href="https://www.home-assistant.io/">
+    <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2024.6%2B-41BDF5?logo=homeassistant&logoColor=white" />
+  </a>
+  <a href="LICENSE">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green" />
+  </a>
+</p>
+
+A custom Lovelace card for Home Assistant that displays EcoFlow battery levels with a beautiful, animated battery icon. This card provides an intuitive visual representation of your EcoFlow power station's battery status with color-coded indicators.
 
 ## ✨ Features
 
@@ -162,7 +182,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏷️ Version
 
-**Current Version**: 0.1.5
+**Current Version**: 0.2.0
 
 ## 🙏 Credits
 

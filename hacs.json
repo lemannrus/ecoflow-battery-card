@@ -1,8 +1,9 @@
 {
-    "name": "Eco Battery Card",
+    "name": "EcoFlow Battery Card",
     "content_in_root": true,
     "render_readme": true,
     "homeassistant": "2024.6.0",
-    "filename": "eco-battery-card.js"
+    "filename": "eco-battery-card.js",
+    "image": "https://raw.githubusercontent.com/lemannrus/ecoflow-battery-card/main/assets/icon.svg"
   }
   
