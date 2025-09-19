@@ -1,6 +1,6 @@
 # EcoFlow Battery Card for Home Assistant
 
-A custom Lovelace card for Home Assistant that displays EcoFlow battery levels with a beautiful, animated battery icon. This card provides an intuitive visual representation of your EcoFlow power station's battery status with color-coded indicators.
+A custom Lovelace card for Home Assistant that displays EcoFlow battery levels with a beautiful battery icon. This card provides an intuitive visual representation of your EcoFlow power station's battery status with color-coded indicators.
 
 ## ✨ Features
 
@@ -162,7 +162,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🏷️ Version
 
-**Current Version**: 0.2.0
+**Current Version**: 0.1.5
 
 ## 🙏 Credits
 
