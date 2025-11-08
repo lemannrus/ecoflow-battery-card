@@ -1,7 +1,7 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.2.0
+ * Version: 0.3.0
  *
  * Config example:
  * type: custom:eco-battery-card
@@ -15,6 +15,7 @@
  * precision: 0
  * show_state: true
  * invert: false
+ * remaining_time_entity: sensor.delta_2_discharge_remaining_time  # optional
  */
 
 /* Lit helpers from HA (pattern used by many cards) */
@@ -41,12 +42,13 @@ class EcoBatteryCard extends LitBase {
     this._config = {
       name: config.name || '',
       entity: config.entity,
+      remaining_time_entity: config.remaining_time_entity || null,
       green: typeof config.green === 'number' ? config.green : 60,
       yellow: typeof config.yellow === 'number' ? config.yellow : 25,
       show_state: config.show_state !== false,
       precision: typeof config.precision === 'number' ? config.precision : 0,
       invert: !!config.invert,
-      palette: ['threshold','gradient'].includes(config.palette) ? config.palette : 'threshold',
+      palette: ['threshold', 'gradient'].includes(config.palette) ? config.palette : 'threshold',
       segments: Number.isFinite(config.segments) ? Math.max(1, Math.floor(config.segments)) : 5,
       gap: Number.isFinite(config.gap) ? Math.max(0, config.gap) : 3,
     };
@@ -80,10 +82,21 @@ class EcoBatteryCard extends LitBase {
     return 'var(--success-color, #43a047)';
   }
 
+  _remainingTime() {
+    if (!this._config.remaining_time_entity) return null;
+    const st = this.hass?.states?.[this._config.remaining_time_entity];
+    if (!st) return null;
+    const value = st.state;
+    if (!value || value === 'unknown' || value === 'unavailable') return null;
+    // Return the state directly - it might already be formatted
+    return value;
+  }
+
   render() {
     if (!this._config) return html``;
     const pct = this._pct();
     const color = this._color(pct);
+    const remainingTime = this._remainingTime();
 
     // SVG geometry
     const W = 220; // total width
@@ -162,10 +175,16 @@ class EcoBatteryCard extends LitBase {
             ${segments}
 
             <!-- Percentage centered -->
-            <text x="${bodyX + bodyW/2}" y="${bodyY + bodyH/2}"
+            <text x="${bodyX + bodyW / 2}" y="${bodyY + bodyH / 2}"
                   text-anchor="middle" dominant-baseline="central" class="pct" fill="white">${stateText}</text>
             
           </svg>
+          ${remainingTime ? html`
+            <div class="remaining-time">
+              <span class="time-icon">⏱</span>
+              <span class="time-value">${remainingTime}</span>
+            </div>
+          ` : ''}
         </div>
       </ha-card>
     `;
@@ -192,6 +211,27 @@ class EcoBatteryCard extends LitBase {
         text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);
         filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
       }
+      .remaining-time {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 0px;
+        padding: 0px 0px;
+        background: var(--card-background-color, rgba(255,255,255,0.05));
+        border-radius: 12px;
+        font-size: 40px;
+        color: var(--primary-text-color);
+        opacity: 0.95;
+      }
+      .time-icon {
+        font-size: 40px;
+        opacity: 0.85;
+      }
+      .time-value {
+        font-weight: 600;
+        font-size: 40px;
+      }
     `;
   }
 
@@ -202,4 +242,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.2.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.3.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
