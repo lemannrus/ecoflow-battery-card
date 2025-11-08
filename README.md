@@ -44,6 +44,7 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 - **No Build Step Required**: Single JavaScript file, ready to use
 - **Home Assistant Theme Integration**: Automatically adapts to your HA theme colors
 - **Responsive Design**: Scales beautifully across different screen sizes
+- **Google Nest Hub Compatible**: CSS-based animations work seamlessly on Cast devices
 
 ## 🖼️ Screenshot
 

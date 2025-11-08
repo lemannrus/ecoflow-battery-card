@@ -162,58 +162,28 @@ class EcoBatteryCard extends LitBase {
   }
 
   _renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'energy-flow');
+    const mainG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    mainG.setAttribute('class', 'energy-flow');
 
     const startX = bodyX + bodyW;
     const endX = W - PAD - 15;
+    const distance = endX - startX;
     const y = bodyY + bodyH / 2;
 
-    // Create 5 particles with different start delays
-    const particles = [
-      { begin: '0s' },
-      { begin: '0.4s' },
-      { begin: '0.8s' },
-      { begin: '1.2s' },
-      { begin: '1.6s' }
-    ];
-
-    particles.forEach((particle, index) => {
+    // Create 5 particles with different animation delays via CSS
+    for (let i = 1; i <= 5; i++) {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('class', `flow-particle particle-${index + 1}`);
+      circle.setAttribute('class', `flow-particle particle-${i}`);
       circle.setAttribute('r', '2.5');
+      circle.setAttribute('cx', String(startX));
+      circle.setAttribute('cy', String(y));
       circle.setAttribute('fill', color);
+      circle.style.setProperty('--flow-distance', `${distance}px`);
 
-      const animCx = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-      animCx.setAttribute('attributeName', 'cx');
-      animCx.setAttribute('from', String(startX));
-      animCx.setAttribute('to', String(endX));
-      animCx.setAttribute('dur', '2s');
-      animCx.setAttribute('begin', particle.begin);
-      animCx.setAttribute('repeatCount', 'indefinite');
-      circle.appendChild(animCx);
+      mainG.appendChild(circle);
+    }
 
-      const animCy = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-      animCy.setAttribute('attributeName', 'cy');
-      animCy.setAttribute('from', String(y));
-      animCy.setAttribute('to', String(y));
-      animCy.setAttribute('dur', '2s');
-      animCy.setAttribute('begin', particle.begin);
-      animCy.setAttribute('repeatCount', 'indefinite');
-      circle.appendChild(animCy);
-
-      const animOp = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-      animOp.setAttribute('attributeName', 'opacity');
-      animOp.setAttribute('values', '0;1;1;0');
-      animOp.setAttribute('dur', '2s');
-      animOp.setAttribute('begin', particle.begin);
-      animOp.setAttribute('repeatCount', 'indefinite');
-      circle.appendChild(animOp);
-
-      g.appendChild(circle);
-    });
-
-    return g;
+    return mainG;
   }
 
   _renderStatusIndicator(W, PAD, bodyY, bodyH, color, isConnected, statusIcon, isCharging, isDischarging) {
@@ -225,47 +195,25 @@ class EcoBatteryCard extends LitBase {
     g.setAttribute('class', 'status-indicator');
     g.setAttribute('transform', `translate(${x}, ${y})`);
 
-    // Outer ring
+    // Outer ring with CSS animation class
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    ring.setAttribute('class', 'status-ring');
+    ring.setAttribute('class', 'status-ring-anim');
     ring.setAttribute('r', '12');
     ring.setAttribute('fill', 'none');
     ring.setAttribute('stroke', fillColor);
     ring.setAttribute('stroke-width', '2');
-    ring.setAttribute('opacity', '0.6');
-
-    const ringAnimR = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-    ringAnimR.setAttribute('attributeName', 'r');
-    ringAnimR.setAttribute('values', '12;14;12');
-    ringAnimR.setAttribute('dur', '2s');
-    ringAnimR.setAttribute('repeatCount', 'indefinite');
-    ring.appendChild(ringAnimR);
-
-    const ringAnimOp = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-    ringAnimOp.setAttribute('attributeName', 'opacity');
-    ringAnimOp.setAttribute('values', '0.6;0.3;0.6');
-    ringAnimOp.setAttribute('dur', '2s');
-    ringAnimOp.setAttribute('repeatCount', 'indefinite');
-    ring.appendChild(ringAnimOp);
 
     g.appendChild(ring);
 
-    // Inner circle
+    // Inner circle with CSS animation class
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('class', 'status-circle-anim');
     circle.setAttribute('r', '10');
     circle.setAttribute('fill', fillColor);
-    circle.setAttribute('opacity', '0.9');
-
-    const circleAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-    circleAnim.setAttribute('attributeName', 'opacity');
-    circleAnim.setAttribute('values', '0.9;1;0.9');
-    circleAnim.setAttribute('dur', '2s');
-    circleAnim.setAttribute('repeatCount', 'indefinite');
-    circle.appendChild(circleAnim);
 
     g.appendChild(circle);
 
-    // Icon text
+    // Icon text with appropriate animation class
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', '0');
     text.setAttribute('y', '0');
@@ -274,29 +222,15 @@ class EcoBatteryCard extends LitBase {
     text.setAttribute('font-size', '12');
     text.setAttribute('fill', 'white');
     text.setAttribute('font-weight', 'bold');
-    text.setAttribute('class', 'status-icon');
     text.textContent = statusIcon;
 
-    // Add animation based on state
-    if (isCharging || isDischarging || isConnected) {
-      const animTransform = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
-      animTransform.setAttribute('attributeName', 'transform');
-      animTransform.setAttribute('dur', '1.5s');
-      animTransform.setAttribute('repeatCount', 'indefinite');
-      animTransform.setAttribute('additive', 'sum');
-
-      if (isCharging) {
-        animTransform.setAttribute('type', 'translate');
-        animTransform.setAttribute('values', '0,1;0,-1;0,1');
-      } else if (isDischarging) {
-        animTransform.setAttribute('type', 'translate');
-        animTransform.setAttribute('values', '0,-1;0,1;0,-1');
-      } else if (isConnected) {
-        animTransform.setAttribute('type', 'scale');
-        animTransform.setAttribute('values', '1;1.3;1');
-      }
-
-      text.appendChild(animTransform);
+    // Add animation class based on state
+    if (isCharging) {
+      text.setAttribute('class', 'status-icon-charging');
+    } else if (isDischarging) {
+      text.setAttribute('class', 'status-icon-discharging');
+    } else if (isConnected) {
+      text.setAttribute('class', 'status-icon-connected');
     }
 
     g.appendChild(text);
@@ -407,11 +341,11 @@ class EcoBatteryCard extends LitBase {
             <text x="${bodyX + bodyW / 2}" y="${bodyY + bodyH / 2}"
                   text-anchor="middle" dominant-baseline="central" class="pct" fill="white">${stateText}</text>
             
+            <!-- Energy Flow Animation (behind status indicator) -->
+            ${acOutPower && acOutPower > 0 ? this._renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) : ''}
+            
             <!-- Status Indicator Circle (Charging/Discharging/Connected) -->
             ${(isCharging || isDischarging || isConnected) ? this._renderStatusIndicator(W, PAD, bodyY, bodyH, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
-            
-            <!-- Energy Flow Animation -->
-            ${acOutPower && acOutPower > 0 ? this._renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) : ''}
           </svg>
           ${remainingTime ? html`
             <div class="remaining-time">
@@ -506,20 +440,68 @@ class EcoBatteryCard extends LitBase {
       }
       .flow-particle {
         filter: drop-shadow(0 0 3px currentColor);
+        animation: flowParticle 2s ease-in-out infinite;
       }
+      .flow-particle.particle-1 { animation-delay: 0s; }
+      .flow-particle.particle-2 { animation-delay: 0.4s; }
+      .flow-particle.particle-3 { animation-delay: 0.8s; }
+      .flow-particle.particle-4 { animation-delay: 1.2s; }
+      .flow-particle.particle-5 { animation-delay: 1.6s; }
       .status-indicator {
         filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
       }
-      .status-ring {
-        filter: drop-shadow(0 0 2px currentColor);
+      .status-ring-anim {
+        opacity: 0.6;
+        animation: ringPulse 2s ease-in-out infinite;
       }
-      .status-icon {
+      .status-circle-anim {
+        opacity: 0.9;
+        animation: circlePulse 2s ease-in-out infinite;
+      }
+      .status-icon-charging {
+        animation: bounceUp 1.5s ease-in-out infinite;
+        user-select: none;
+        pointer-events: none;
+      }
+      .status-icon-discharging {
+        animation: bounceDown 1.5s ease-in-out infinite;
+        user-select: none;
+        pointer-events: none;
+      }
+      .status-icon-connected {
+        animation: scaleIcon 1.5s ease-in-out infinite;
         user-select: none;
         pointer-events: none;
       }
       @keyframes pulse {
         0%, 100% { opacity: 0.9; transform: scale(1); }
         50% { opacity: 1; transform: scale(1.1); }
+      }
+      @keyframes flowParticle {
+        0% { opacity: 0; transform: translateX(0); }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { opacity: 0; transform: translateX(var(--flow-distance, 89px)); }
+      }
+      @keyframes ringPulse {
+        0%, 100% { opacity: 0.6; transform: scale(1); }
+        50% { opacity: 0.3; transform: scale(1.17); }
+      }
+      @keyframes circlePulse {
+        0%, 100% { opacity: 0.9; }
+        50% { opacity: 1; }
+      }
+      @keyframes bounceUp {
+        0%, 100% { transform: translateY(1px); }
+        50% { transform: translateY(-1px); }
+      }
+      @keyframes bounceDown {
+        0%, 100% { transform: translateY(-1px); }
+        50% { transform: translateY(1px); }
+      }
+      @keyframes scaleIcon {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.3); }
       }
     `;
   }
@@ -531,4 +513,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.1.14 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.1.16 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
