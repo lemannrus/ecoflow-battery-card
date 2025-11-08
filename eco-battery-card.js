@@ -88,8 +88,28 @@ class EcoBatteryCard extends LitBase {
     if (!st) return null;
     const value = st.state;
     if (!value || value === 'unknown' || value === 'unavailable') return null;
-    // Return the state directly - it might already be formatted
+
+    // Try to parse as number (minutes)
+    const minutes = Number(value);
+    if (Number.isFinite(minutes) && minutes > 0) {
+      return this._formatMinutes(minutes);
+    }
+
+    // Return the state directly if it's already formatted
     return value;
+  }
+
+  _formatMinutes(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = Math.round(totalMinutes % 60);
+
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}min`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else {
+      return `${minutes}min`;
+    }
   }
 
   render() {
