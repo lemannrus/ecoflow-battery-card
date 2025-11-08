@@ -167,30 +167,30 @@ class EcoBatteryCard extends LitBase {
 
     const startX = bodyX + bodyW;
     const endX = W - PAD - 15;
+    const distance = endX - startX;
     const y = bodyY + bodyH / 2;
 
-    // Create 12 particles for seamless continuous flow even during restarts
-    for (let i = 1; i <= 12; i++) {
-      // Create a group element that can be transformed
-      const particleGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      particleGroup.setAttribute('class', `flow-particle-wrapper particle-${i}`);
+    // Create particles distributed along the entire path
+    // They stay in place, only their opacity animates in a wave pattern
+    const numParticles = 12;
 
-      // Create circle at origin (0,0) relative to group
+    for (let i = 0; i < numParticles; i++) {
+      // Calculate position along the path (0 to 1)
+      const progress = i / (numParticles - 1);
+      const x = startX + (distance * progress);
+
+      // Create circle at its fixed position
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('class', 'flow-particle-circle');
+      circle.setAttribute('class', `flow-particle-static particle-${i + 1}`);
       circle.setAttribute('r', '2.5');
-      circle.setAttribute('cx', '0');
-      circle.setAttribute('cy', '0');
+      circle.setAttribute('cx', String(x));
+      circle.setAttribute('cy', String(y));
       circle.setAttribute('fill', color);
 
-      particleGroup.appendChild(circle);
+      // Set animation delay based on position
+      circle.style.animationDelay = `${(i * 0.15)}s`;
 
-      // Position the group at start point and animate from there
-      particleGroup.style.setProperty('--start-x', `${startX}px`);
-      particleGroup.style.setProperty('--start-y', `${y}px`);
-      particleGroup.style.setProperty('--end-x', `${endX}px`);
-
-      mainG.appendChild(particleGroup);
+      mainG.appendChild(circle);
     }
 
     return mainG;
@@ -336,6 +336,9 @@ class EcoBatteryCard extends LitBase {
       <ha-card .header=${label} class="eco-card">
         <div class="wrap">
           <svg viewBox="0 0 ${W} ${H}" part="svg">
+            <!-- Energy Flow Animation (rendered first, behind everything) -->
+            ${acOutPower && acOutPower > 0 ? this._renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) : ''}
+            
             <!-- Battery body -->
             <rect x="${bodyX}" y="${bodyY}" rx="10" ry="10" width="${bodyW}" height="${bodyH}" class="case" />
             <!-- Battery cap -->
@@ -350,9 +353,6 @@ class EcoBatteryCard extends LitBase {
             <!-- Percentage centered -->
             <text x="${bodyX + bodyW / 2}" y="${bodyY + bodyH / 2}"
                   text-anchor="middle" dominant-baseline="central" class="pct" fill="white">${stateText}</text>
-            
-            <!-- Energy Flow Animation (behind status indicator) -->
-            ${acOutPower && acOutPower > 0 ? this._renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) : ''}
             
             <!-- Status Indicator Circle (Charging/Discharging/Connected) -->
             ${(isCharging || isDischarging || isConnected) ? this._renderStatusIndicator(W, PAD, bodyY, bodyH, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
@@ -452,24 +452,9 @@ class EcoBatteryCard extends LitBase {
       .energy-flow {
         opacity: 0.9;
       }
-      .flow-particle-wrapper {
-        animation: flowParticle 3s linear infinite;
-        transform-origin: 0 0;
-      }
-      .flow-particle-wrapper.particle-1 { animation-delay: 0s; }
-      .flow-particle-wrapper.particle-2 { animation-delay: 0.25s; }
-      .flow-particle-wrapper.particle-3 { animation-delay: 0.5s; }
-      .flow-particle-wrapper.particle-4 { animation-delay: 0.75s; }
-      .flow-particle-wrapper.particle-5 { animation-delay: 1s; }
-      .flow-particle-wrapper.particle-6 { animation-delay: 1.25s; }
-      .flow-particle-wrapper.particle-7 { animation-delay: 1.5s; }
-      .flow-particle-wrapper.particle-8 { animation-delay: 1.75s; }
-      .flow-particle-wrapper.particle-9 { animation-delay: 2s; }
-      .flow-particle-wrapper.particle-10 { animation-delay: 2.25s; }
-      .flow-particle-wrapper.particle-11 { animation-delay: 2.5s; }
-      .flow-particle-wrapper.particle-12 { animation-delay: 2.75s; }
-      .flow-particle-circle {
+      .flow-particle-static {
         filter: drop-shadow(0 0 3px currentColor);
+        animation: flowWave 1.8s ease-in-out infinite;
       }
       .status-indicator {
         filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
@@ -504,22 +489,12 @@ class EcoBatteryCard extends LitBase {
         0%, 100% { opacity: 0.9; transform: scale(1); }
         50% { opacity: 1; transform: scale(1.1); }
       }
-      @keyframes flowParticle {
-        0% { 
-          opacity: 0; 
-          transform: translate(var(--start-x), var(--start-y));
+      @keyframes flowWave {
+        0%, 100% { 
+          opacity: 0.2;
         }
-        3% { 
-          opacity: 0.7; 
-          transform: translate(var(--start-x), var(--start-y));
-        }
-        97% { 
-          opacity: 0.7; 
-          transform: translate(var(--end-x), var(--start-y));
-        }
-        100% { 
-          opacity: 0; 
-          transform: translate(var(--end-x), var(--start-y));
+        50% { 
+          opacity: 0.85;
         }
       }
       @keyframes ringPulse {
@@ -552,4 +527,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.1.23 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.1.26 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
