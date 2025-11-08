@@ -170,8 +170,8 @@ class EcoBatteryCard extends LitBase {
     const distance = endX - startX;
     const y = bodyY + bodyH / 2;
 
-    // Create 5 particles with different animation delays via CSS
-    for (let i = 1; i <= 5; i++) {
+    // Create 8 particles with staggered delays for seamless continuous flow
+    for (let i = 1; i <= 8; i++) {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('class', `flow-particle particle-${i}`);
       circle.setAttribute('r', '2.5');
@@ -198,17 +198,17 @@ class EcoBatteryCard extends LitBase {
     // Outer ring with CSS animation class
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     ring.setAttribute('class', 'status-ring-anim');
-    ring.setAttribute('r', '12');
+    ring.setAttribute('r', '18');
     ring.setAttribute('fill', 'none');
     ring.setAttribute('stroke', fillColor);
-    ring.setAttribute('stroke-width', '2');
+    ring.setAttribute('stroke-width', '2.5');
 
     g.appendChild(ring);
 
     // Inner circle with CSS animation class
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('class', 'status-circle-anim');
-    circle.setAttribute('r', '10');
+    circle.setAttribute('r', '15');
     circle.setAttribute('fill', fillColor);
 
     g.appendChild(circle);
@@ -219,7 +219,7 @@ class EcoBatteryCard extends LitBase {
     text.setAttribute('y', '0');
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'central');
-    text.setAttribute('font-size', '12');
+    text.setAttribute('font-size', '18');
     text.setAttribute('fill', 'white');
     text.setAttribute('font-weight', 'bold');
     text.textContent = statusIcon;
@@ -440,13 +440,16 @@ class EcoBatteryCard extends LitBase {
       }
       .flow-particle {
         filter: drop-shadow(0 0 3px currentColor);
-        animation: flowParticle 2s ease-in-out infinite;
+        animation: flowParticle 2.4s linear infinite;
       }
       .flow-particle.particle-1 { animation-delay: 0s; }
-      .flow-particle.particle-2 { animation-delay: 0.4s; }
-      .flow-particle.particle-3 { animation-delay: 0.8s; }
-      .flow-particle.particle-4 { animation-delay: 1.2s; }
-      .flow-particle.particle-5 { animation-delay: 1.6s; }
+      .flow-particle.particle-2 { animation-delay: 0.3s; }
+      .flow-particle.particle-3 { animation-delay: 0.6s; }
+      .flow-particle.particle-4 { animation-delay: 0.9s; }
+      .flow-particle.particle-5 { animation-delay: 1.2s; }
+      .flow-particle.particle-6 { animation-delay: 1.5s; }
+      .flow-particle.particle-7 { animation-delay: 1.8s; }
+      .flow-particle.particle-8 { animation-delay: 2.1s; }
       .status-indicator {
         filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
       }
@@ -479,25 +482,25 @@ class EcoBatteryCard extends LitBase {
       }
       @keyframes flowParticle {
         0% { opacity: 0; transform: translateX(0); }
-        10% { opacity: 1; }
-        90% { opacity: 1; }
+        5% { opacity: 0.8; }
+        95% { opacity: 0.8; }
         100% { opacity: 0; transform: translateX(var(--flow-distance, 89px)); }
       }
       @keyframes ringPulse {
         0%, 100% { opacity: 0.6; transform: scale(1); }
-        50% { opacity: 0.3; transform: scale(1.17); }
+        50% { opacity: 0.3; transform: scale(1.15); }
       }
       @keyframes circlePulse {
         0%, 100% { opacity: 0.9; }
         50% { opacity: 1; }
       }
       @keyframes bounceUp {
-        0%, 100% { transform: translateY(1px); }
-        50% { transform: translateY(-1px); }
+        0%, 100% { transform: translateY(1.5px); }
+        50% { transform: translateY(-1.5px); }
       }
       @keyframes bounceDown {
-        0%, 100% { transform: translateY(-1px); }
-        50% { transform: translateY(1px); }
+        0%, 100% { transform: translateY(-1.5px); }
+        50% { transform: translateY(1.5px); }
       }
       @keyframes scaleIcon {
         0%, 100% { transform: scale(1); }
@@ -513,4 +516,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.1.16 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.1.18 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
