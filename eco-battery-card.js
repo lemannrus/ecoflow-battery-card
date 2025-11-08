@@ -1,7 +1,7 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.1.13
+ * Version: 0.1.14
  *
  * Config example:
  * type: custom:eco-battery-card
@@ -87,6 +87,16 @@ class EcoBatteryCard extends LitBase {
   }
 
   _remainingTime() {
+    // Debug logging
+    if (this._config.remaining_time_entity) {
+      const dischargeSt = this.hass?.states?.[this._config.remaining_time_entity];
+      console.log('[ECO-BATTERY-CARD] Discharge sensor:', this._config.remaining_time_entity, 'State:', dischargeSt?.state);
+    }
+    if (this._config.charge_remaining_time_entity) {
+      const chargeSt = this.hass?.states?.[this._config.charge_remaining_time_entity];
+      console.log('[ECO-BATTERY-CARD] Charge sensor:', this._config.charge_remaining_time_entity, 'State:', chargeSt?.state);
+    }
+
     // Try discharge time first
     if (this._config.remaining_time_entity) {
       const dischargeSt = this.hass?.states?.[this._config.remaining_time_entity];
@@ -95,6 +105,7 @@ class EcoBatteryCard extends LitBase {
 
         // If discharge time is valid and > 0, use it
         if (Number.isFinite(dischargeMinutes) && dischargeMinutes > 0) {
+          console.log('[ECO-BATTERY-CARD] Showing discharge:', dischargeMinutes, 'minutes');
           return { time: this._formatMinutes(dischargeMinutes), type: 'discharge' };
         }
       }
@@ -107,11 +118,13 @@ class EcoBatteryCard extends LitBase {
         const chargeMinutes = Number(chargeSt.state);
 
         if (Number.isFinite(chargeMinutes) && chargeMinutes > 0) {
+          console.log('[ECO-BATTERY-CARD] Showing charge:', chargeMinutes, 'minutes');
           return { time: this._formatMinutes(chargeMinutes), type: 'charge' };
         }
       }
     }
 
+    console.log('[ECO-BATTERY-CARD] No valid remaining time found');
     return null;
   }
 
@@ -148,6 +161,149 @@ class EcoBatteryCard extends LitBase {
     return `${Math.round(watts)} W`;
   }
 
+  _renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'energy-flow');
+
+    const startX = bodyX + bodyW;
+    const endX = W - PAD - 15;
+    const y = bodyY + bodyH / 2;
+
+    // Create 5 particles with different start delays
+    const particles = [
+      { begin: '0s' },
+      { begin: '0.4s' },
+      { begin: '0.8s' },
+      { begin: '1.2s' },
+      { begin: '1.6s' }
+    ];
+
+    particles.forEach((particle, index) => {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', `flow-particle particle-${index + 1}`);
+      circle.setAttribute('r', '2.5');
+      circle.setAttribute('fill', color);
+
+      const animCx = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+      animCx.setAttribute('attributeName', 'cx');
+      animCx.setAttribute('from', String(startX));
+      animCx.setAttribute('to', String(endX));
+      animCx.setAttribute('dur', '2s');
+      animCx.setAttribute('begin', particle.begin);
+      animCx.setAttribute('repeatCount', 'indefinite');
+      circle.appendChild(animCx);
+
+      const animCy = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+      animCy.setAttribute('attributeName', 'cy');
+      animCy.setAttribute('from', String(y));
+      animCy.setAttribute('to', String(y));
+      animCy.setAttribute('dur', '2s');
+      animCy.setAttribute('begin', particle.begin);
+      animCy.setAttribute('repeatCount', 'indefinite');
+      circle.appendChild(animCy);
+
+      const animOp = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+      animOp.setAttribute('attributeName', 'opacity');
+      animOp.setAttribute('values', '0;1;1;0');
+      animOp.setAttribute('dur', '2s');
+      animOp.setAttribute('begin', particle.begin);
+      animOp.setAttribute('repeatCount', 'indefinite');
+      circle.appendChild(animOp);
+
+      g.appendChild(circle);
+    });
+
+    return g;
+  }
+
+  _renderStatusIndicator(W, PAD, bodyY, bodyH, color, isConnected, statusIcon, isCharging, isDischarging) {
+    const x = W - PAD - 15;
+    const y = bodyY + bodyH / 2;
+    const fillColor = isConnected ? 'var(--success-color, #43a047)' : color;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'status-indicator');
+    g.setAttribute('transform', `translate(${x}, ${y})`);
+
+    // Outer ring
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('class', 'status-ring');
+    ring.setAttribute('r', '12');
+    ring.setAttribute('fill', 'none');
+    ring.setAttribute('stroke', fillColor);
+    ring.setAttribute('stroke-width', '2');
+    ring.setAttribute('opacity', '0.6');
+
+    const ringAnimR = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+    ringAnimR.setAttribute('attributeName', 'r');
+    ringAnimR.setAttribute('values', '12;14;12');
+    ringAnimR.setAttribute('dur', '2s');
+    ringAnimR.setAttribute('repeatCount', 'indefinite');
+    ring.appendChild(ringAnimR);
+
+    const ringAnimOp = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+    ringAnimOp.setAttribute('attributeName', 'opacity');
+    ringAnimOp.setAttribute('values', '0.6;0.3;0.6');
+    ringAnimOp.setAttribute('dur', '2s');
+    ringAnimOp.setAttribute('repeatCount', 'indefinite');
+    ring.appendChild(ringAnimOp);
+
+    g.appendChild(ring);
+
+    // Inner circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('r', '10');
+    circle.setAttribute('fill', fillColor);
+    circle.setAttribute('opacity', '0.9');
+
+    const circleAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+    circleAnim.setAttribute('attributeName', 'opacity');
+    circleAnim.setAttribute('values', '0.9;1;0.9');
+    circleAnim.setAttribute('dur', '2s');
+    circleAnim.setAttribute('repeatCount', 'indefinite');
+    circle.appendChild(circleAnim);
+
+    g.appendChild(circle);
+
+    // Icon text
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '0');
+    text.setAttribute('y', '0');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'central');
+    text.setAttribute('font-size', '12');
+    text.setAttribute('fill', 'white');
+    text.setAttribute('font-weight', 'bold');
+    text.setAttribute('class', 'status-icon');
+    text.textContent = statusIcon;
+
+    // Add animation based on state
+    if (isCharging || isDischarging || isConnected) {
+      const animTransform = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
+      animTransform.setAttribute('attributeName', 'transform');
+      animTransform.setAttribute('dur', '1.5s');
+      animTransform.setAttribute('repeatCount', 'indefinite');
+      animTransform.setAttribute('additive', 'sum');
+
+      if (isCharging) {
+        animTransform.setAttribute('type', 'translate');
+        animTransform.setAttribute('values', '0,1;0,-1;0,1');
+      } else if (isDischarging) {
+        animTransform.setAttribute('type', 'translate');
+        animTransform.setAttribute('values', '0,-1;0,1;0,-1');
+      } else if (isConnected) {
+        animTransform.setAttribute('type', 'scale');
+        animTransform.setAttribute('values', '1;1.3;1');
+      }
+
+      text.appendChild(animTransform);
+    }
+
+    g.appendChild(text);
+
+    return g;
+  }
+
   render() {
     if (!this._config) return html``;
     const pct = this._pct();
@@ -182,6 +338,16 @@ class EcoBatteryCard extends LitBase {
     const isDischarging = remainingTime?.type === 'discharge';
     const isConnected = !isCharging && !isDischarging && (this._config.remaining_time_entity || this._config.charge_remaining_time_entity);
     const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : (isConnected ? '⚡' : ''));
+
+    // Debug logging for status
+    console.log('[ECO-BATTERY-CARD] Status:', {
+      remainingTime: remainingTime,
+      isCharging: isCharging,
+      isDischarging: isDischarging,
+      isConnected: isConnected,
+      statusIcon: statusIcon,
+      hasEntities: !!(this._config.remaining_time_entity || this._config.charge_remaining_time_entity)
+    });
 
     // Battery segments (vertical columns), fill left-to-right
     const numSegments = this._config.segments;
@@ -242,67 +408,10 @@ class EcoBatteryCard extends LitBase {
                   text-anchor="middle" dominant-baseline="central" class="pct" fill="white">${stateText}</text>
             
             <!-- Status Indicator Circle (Charging/Discharging/Connected) -->
-            ${(isCharging || isDischarging || isConnected) ? svg`
-              <g class="status-indicator" transform="translate(${W - PAD - 15}, ${bodyY + bodyH / 2})">
-                <!-- Animated outer ring -->
-                <circle class="status-ring" r="12" fill="none" stroke="${isConnected ? 'var(--success-color, #43a047)' : color}" stroke-width="2" opacity="0.6">
-                  <animate attributeName="r" values="12;14;12" dur="2s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.6;0.3;0.6" dur="2s" repeatCount="indefinite" />
-                </circle>
-                <!-- Inner circle background -->
-                <circle r="10" fill="${isConnected ? 'var(--success-color, #43a047)' : color}" opacity="0.9">
-                  <animate attributeName="opacity" values="0.9;1;0.9" dur="2s" repeatCount="indefinite" />
-                </circle>
-                <!-- Icon -->
-                <text x="0" y="0" text-anchor="middle" dominant-baseline="central" 
-                      font-size="12" fill="white" font-weight="bold" class="status-icon">
-                  ${statusIcon}
-                  ${isCharging ? svg`
-                    <animateTransform attributeName="transform" type="translate" 
-                      values="0,1;0,-1;0,1" dur="1.5s" repeatCount="indefinite" additive="sum" />
-                  ` : ''}
-                  ${isDischarging ? svg`
-                    <animateTransform attributeName="transform" type="translate" 
-                      values="0,-1;0,1;0,-1" dur="1.5s" repeatCount="indefinite" additive="sum" />
-                  ` : ''}
-                  ${isConnected ? svg`
-                    <animateTransform attributeName="transform" type="scale" 
-                      values="1;1.3;1" dur="1.5s" repeatCount="indefinite" additive="sum" />
-                  ` : ''}
-                </text>
-              </g>
-            ` : ''}
+            ${(isCharging || isDischarging || isConnected) ? this._renderStatusIndicator(W, PAD, bodyY, bodyH, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
             
             <!-- Energy Flow Animation -->
-            ${acOutPower && acOutPower > 0 ? svg`
-              <g class="energy-flow">
-                <circle class="flow-particle particle-1" r="2.5" fill="${color}">
-                  <animate attributeName="cx" from="${bodyX + bodyW}" to="${W - PAD - 15}" dur="2s" repeatCount="indefinite" />
-                  <animate attributeName="cy" from="${bodyY + bodyH / 2}" to="${bodyY + bodyH / 2}" dur="2s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0;1;1;0" dur="2s" repeatCount="indefinite" />
-                </circle>
-                <circle class="flow-particle particle-2" r="2.5" fill="${color}">
-                  <animate attributeName="cx" from="${bodyX + bodyW}" to="${W - PAD - 15}" dur="2s" begin="0.4s" repeatCount="indefinite" />
-                  <animate attributeName="cy" from="${bodyY + bodyH / 2}" to="${bodyY + bodyH / 2}" dur="2s" begin="0.4s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0;1;1;0" dur="2s" begin="0.4s" repeatCount="indefinite" />
-                </circle>
-                <circle class="flow-particle particle-3" r="2.5" fill="${color}">
-                  <animate attributeName="cx" from="${bodyX + bodyW}" to="${W - PAD - 15}" dur="2s" begin="0.8s" repeatCount="indefinite" />
-                  <animate attributeName="cy" from="${bodyY + bodyH / 2}" to="${bodyY + bodyH / 2}" dur="2s" begin="0.8s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0;1;1;0" dur="2s" begin="0.8s" repeatCount="indefinite" />
-                </circle>
-                <circle class="flow-particle particle-4" r="2.5" fill="${color}">
-                  <animate attributeName="cx" from="${bodyX + bodyW}" to="${W - PAD - 15}" dur="2s" begin="1.2s" repeatCount="indefinite" />
-                  <animate attributeName="cy" from="${bodyY + bodyH / 2}" to="${bodyY + bodyH / 2}" dur="2s" begin="1.2s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0;1;1;0" dur="2s" begin="1.2s" repeatCount="indefinite" />
-                </circle>
-                <circle class="flow-particle particle-5" r="2.5" fill="${color}">
-                  <animate attributeName="cx" from="${bodyX + bodyW}" to="${W - PAD - 15}" dur="2s" begin="1.6s" repeatCount="indefinite" />
-                  <animate attributeName="cy" from="${bodyY + bodyH / 2}" to="${bodyY + bodyH / 2}" dur="2s" begin="1.6s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0;1;1;0" dur="2s" begin="1.6s" repeatCount="indefinite" />
-                </circle>
-              </g>
-            ` : ''}
+            ${acOutPower && acOutPower > 0 ? this._renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) : ''}
           </svg>
           ${remainingTime ? html`
             <div class="remaining-time">
@@ -422,4 +531,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.1.13 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.1.14 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
