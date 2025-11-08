@@ -26,7 +26,10 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 - **Visual Battery Display**: SVG battery with segmented columns that fill left-to-right
 - **Color-Coded Status**: Green (good), yellow (warning), red (critical) battery levels
-- **Remaining Time Display**: Optional display of discharge/charge remaining time from a separate sensor
+- **Smart Time Display**: Automatically shows discharge time (⏱) or charge time (⚡) with automatic formatting
+  - Discharge time displayed when battery is discharging
+  - Charge time displayed when battery is charging (discharge = 0)
+  - Automatically converts minutes to "Xh Ymin" format
 - **Configurable Thresholds**: Customize when colors change based on your needs
 - **Flexible Entity Support**: Works with any percentage-based sensor (0-100%)
 - **HACS Compatible**: Easy installation through Home Assistant Community Store
@@ -82,7 +85,8 @@ name: "EcoFlow Delta 2"
 type: custom:eco-battery-card
 entity: sensor.ecoflow_battery_level
 name: "EcoFlow Delta 2"
-remaining_time_entity: sensor.delta_2_discharge_remaining_time  # Optional
+remaining_time_entity: sensor.delta_2_discharge_remaining_time  # Optional - discharge time in minutes
+charge_remaining_time_entity: sensor.delta_2_charge_remaining_time  # Optional - charge time in minutes
 green: 60        # Battery level >= 60% shows green
 yellow: 25       # Battery level >= 25% and < 60% shows yellow
                  # Battery level < 25% shows red
@@ -100,7 +104,8 @@ palette: threshold  # 'threshold' | 'gradient'
 |--------|------|---------|-------------|
 | `entity` | string | **Required** | The entity ID of your battery sensor |
 | `name` | string | Entity friendly name | Display name for the card |
-| `remaining_time_entity` | string | `null` | Optional entity ID for discharge/charge remaining time |
+| `remaining_time_entity` | string | `null` | Optional entity ID for discharge remaining time (in minutes, shows ⏱ icon) |
+| `charge_remaining_time_entity` | string | `null` | Optional entity ID for charge remaining time (in minutes, shows ⚡ icon, displayed when discharge is 0) |
 | `green` | number | `60` | Battery percentage threshold for green color |
 | `yellow` | number | `25` | Battery percentage threshold for yellow color |
 | `show_state` | boolean | `true` | Whether to display percentage text on battery |
@@ -146,9 +151,14 @@ type: custom:eco-battery-card
 entity: sensor.ecoflow_delta2_battery_level
 name: "EcoFlow Delta 2"
 remaining_time_entity: sensor.delta_2_discharge_remaining_time
+charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
 green: 80
 yellow: 30
 ```
+
+The card will automatically show:
+- ⏱ **Discharge time** when battery is providing power (e.g., "5h 33min")
+- ⚡ **Charge time** when battery is charging (e.g., "2h 15min")
 
 ### Generic Battery Sensor
 

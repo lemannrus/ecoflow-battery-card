@@ -1,7 +1,7 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.3.0
+ * Version: 0.4.0
  *
  * Config example:
  * type: custom:eco-battery-card
@@ -16,6 +16,7 @@
  * show_state: true
  * invert: false
  * remaining_time_entity: sensor.delta_2_discharge_remaining_time  # optional
+ * charge_remaining_time_entity: sensor.delta_2_charge_remaining_time  # optional
  */
 
 /* Lit helpers from HA (pattern used by many cards) */
@@ -43,6 +44,7 @@ class EcoBatteryCard extends LitBase {
       name: config.name || '',
       entity: config.entity,
       remaining_time_entity: config.remaining_time_entity || null,
+      charge_remaining_time_entity: config.charge_remaining_time_entity || null,
       green: typeof config.green === 'number' ? config.green : 60,
       yellow: typeof config.yellow === 'number' ? config.yellow : 25,
       show_state: config.show_state !== false,
@@ -83,20 +85,32 @@ class EcoBatteryCard extends LitBase {
   }
 
   _remainingTime() {
-    if (!this._config.remaining_time_entity) return null;
-    const st = this.hass?.states?.[this._config.remaining_time_entity];
-    if (!st) return null;
-    const value = st.state;
-    if (!value || value === 'unknown' || value === 'unavailable') return null;
+    // Try discharge time first
+    if (this._config.remaining_time_entity) {
+      const dischargeSt = this.hass?.states?.[this._config.remaining_time_entity];
+      if (dischargeSt && dischargeSt.state && dischargeSt.state !== 'unknown' && dischargeSt.state !== 'unavailable') {
+        const dischargeMinutes = Number(dischargeSt.state);
 
-    // Try to parse as number (minutes)
-    const minutes = Number(value);
-    if (Number.isFinite(minutes) && minutes > 0) {
-      return this._formatMinutes(minutes);
+        // If discharge time is valid and > 0, use it
+        if (Number.isFinite(dischargeMinutes) && dischargeMinutes > 0) {
+          return { time: this._formatMinutes(dischargeMinutes), type: 'discharge' };
+        }
+      }
     }
 
-    // Return the state directly if it's already formatted
-    return value;
+    // If discharge is 0 or unavailable, try charge time
+    if (this._config.charge_remaining_time_entity) {
+      const chargeSt = this.hass?.states?.[this._config.charge_remaining_time_entity];
+      if (chargeSt && chargeSt.state && chargeSt.state !== 'unknown' && chargeSt.state !== 'unavailable') {
+        const chargeMinutes = Number(chargeSt.state);
+
+        if (Number.isFinite(chargeMinutes) && chargeMinutes > 0) {
+          return { time: this._formatMinutes(chargeMinutes), type: 'charge' };
+        }
+      }
+    }
+
+    return null;
   }
 
   _formatMinutes(totalMinutes) {
@@ -104,11 +118,11 @@ class EcoBatteryCard extends LitBase {
     const minutes = Math.round(totalMinutes % 60);
 
     if (hours > 0 && minutes > 0) {
-      return `${hours}h ${minutes}min`;
+      return `${hours}h ${minutes}m`;
     } else if (hours > 0) {
       return `${hours}h`;
     } else {
-      return `${minutes}min`;
+      return `${minutes}m`;
     }
   }
 
@@ -201,8 +215,8 @@ class EcoBatteryCard extends LitBase {
           </svg>
           ${remainingTime ? html`
             <div class="remaining-time">
-              <span class="time-icon">⏱</span>
-              <span class="time-value">${remainingTime}</span>
+              <span class="time-icon">${remainingTime.type === 'charge' ? '⚡' : '⏱'}</span>
+              <span class="time-value">${remainingTime.time}</span>
             </div>
           ` : ''}
         </div>
@@ -262,4 +276,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.3.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.4.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
