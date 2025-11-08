@@ -26,6 +26,13 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 - **Visual Battery Display**: SVG battery with segmented columns that fill left-to-right
 - **Color-Coded Status**: Green (good), yellow (warning), red (critical) battery levels
+- **Animated Status Indicator**: Pulsing circular badge on the right showing charging (↑) or discharging (↓) state
+  - Color-matched circle with up arrow when charging (bounces up)
+  - Color-matched circle with down arrow when discharging (bounces down)
+  - Smooth pulsing ring animation
+  - Icons animate with bouncing motion
+- **Animated Energy Flow**: Beautiful animated particles flowing from battery to output when power is being used
+- **Real-Time Power Display**: Shows current AC output power with automatic W/kW formatting
 - **Smart Time Display**: Automatically shows discharge time (⏱) or charge time (⚡) with automatic formatting
   - Discharge time displayed when battery is discharging
   - Charge time displayed when battery is charging (discharge = 0)
@@ -87,6 +94,7 @@ entity: sensor.ecoflow_battery_level
 name: "EcoFlow Delta 2"
 remaining_time_entity: sensor.delta_2_discharge_remaining_time  # Optional - discharge time in minutes
 charge_remaining_time_entity: sensor.delta_2_charge_remaining_time  # Optional - charge time in minutes
+ac_out_power_entity: sensor.delta_2_ac_out_power  # Optional - AC output power in watts
 green: 60        # Battery level >= 60% shows green
 yellow: 25       # Battery level >= 25% and < 60% shows yellow
                  # Battery level < 25% shows red
@@ -106,6 +114,7 @@ palette: threshold  # 'threshold' | 'gradient'
 | `name` | string | Entity friendly name | Display name for the card |
 | `remaining_time_entity` | string | `null` | Optional entity ID for discharge remaining time (in minutes, shows ⏱ icon) |
 | `charge_remaining_time_entity` | string | `null` | Optional entity ID for charge remaining time (in minutes, shows ⚡ icon, displayed when discharge is 0) |
+| `ac_out_power_entity` | string | `null` | Optional entity ID for AC output power (in watts, shows animated energy flow and power value) |
 | `green` | number | `60` | Battery percentage threshold for green color |
 | `yellow` | number | `25` | Battery percentage threshold for yellow color |
 | `show_state` | boolean | `true` | Whether to display percentage text on battery |
@@ -152,13 +161,17 @@ entity: sensor.ecoflow_delta2_battery_level
 name: "EcoFlow Delta 2"
 remaining_time_entity: sensor.delta_2_discharge_remaining_time
 charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+ac_out_power_entity: sensor.delta_2_ac_out_power
 green: 80
 yellow: 30
 ```
 
 The card will automatically show:
+- 🔵 **Animated status badge** on the right (↑ colored circle when charging, ↓ colored circle when discharging)
 - ⏱ **Discharge time** when battery is providing power (e.g., "5h 33min")
 - ⚡ **Charge time** when battery is charging (e.g., "2h 15min")
+- 🌊 **Animated energy flow** particles when power is being consumed
+- ⚡ **Power output** display (e.g., "Output: 1.2 kW")
 
 ### Generic Battery Sensor
 

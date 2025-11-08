@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,7 @@
       --divider-color: #383838;
       --ha-card-border-radius: 12px;
     }
-    
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: #111111;
@@ -23,20 +24,20 @@
       padding: 20px;
       margin: 0;
     }
-    
+
     h1 {
       text-align: center;
       margin-bottom: 10px;
       color: #43a047;
     }
-    
+
     .subtitle {
       text-align: center;
       color: var(--secondary-text-color);
       margin-bottom: 40px;
       font-size: 14px;
     }
-    
+
     .section-title {
       text-align: center;
       color: var(--primary-text-color);
@@ -44,7 +45,7 @@
       font-size: 20px;
       font-weight: 600;
     }
-    
+
     .test-container {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -52,14 +53,14 @@
       max-width: 1400px;
       margin: 0 auto;
     }
-    
+
     .test-card-wrapper {
       background: var(--card-background-color);
       border-radius: var(--ha-card-border-radius);
       padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
-    
+
     .test-label {
       font-size: 12px;
       color: var(--secondary-text-color);
@@ -69,48 +70,50 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    
+
     ha-card {
       display: block;
       background: var(--card-background-color);
       border-radius: var(--ha-card-border-radius);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
   </style>
 </head>
+
 <body>
   <h1>🔋 Eco Battery Card Test Page</h1>
-  <div class="subtitle">Version 0.4.0 - Testing discharge and charge time display</div>
-  
+  <div class="subtitle">Version 0.6.0 - Testing animated status indicator, energy flow, and power output</div>
+
   <div class="section-title">⏱ Discharge Mode (Battery Providing Power)</div>
   <div id="discharge-container" class="test-container"></div>
-  
+
   <div class="section-title">⚡ Charge Mode (Battery Charging)</div>
   <div id="charge-container" class="test-container"></div>
-  
+
   <div class="section-title">🎨 Various Configurations</div>
   <div id="misc-container" class="test-container"></div>
-  
+
   <!-- Load Lit from CDN first -->
   <script type="module">
-    import {LitElement, html, css} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
-    
+    import { LitElement, html, css, svg } from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
+
     // The card extracts the parent class with Object.getPrototypeOf()
-    // Then accesses html/css from that parent's prototype
-    // So we need to attach html/css to LitElement's prototype
+    // Then accesses html/css/svg from that parent's prototype
+    // So we need to attach html/css/svg to LitElement's prototype
     LitElement.prototype.html = html;
     LitElement.prototype.css = css;
-    
+    LitElement.prototype.svg = svg;
+
     // Create a proper mock Home Assistant base element
-    class MockHABase extends LitElement {}
-    
+    class MockHABase extends LitElement { }
+
     // Define the mock HA panel element before the card loads
     if (!customElements.get('ha-panel-lovelace')) {
       customElements.define('ha-panel-lovelace', MockHABase);
     }
-    
+
     // Create mock HASS object factory
-    window.createMockHass = (batteryLevel, dischargeTime = null, chargeTime = null) => ({
+    window.createMockHass = (batteryLevel, dischargeTime = null, chargeTime = null, acOutPower = null) => ({
       states: {
         'sensor.ecoflow_battery': {
           state: String(batteryLevel),
@@ -136,15 +139,25 @@
         } : {
           state: 'unavailable',
           attributes: {}
+        },
+        'sensor.delta_2_ac_out_power': acOutPower !== null ? {
+          state: String(acOutPower),
+          attributes: {
+            friendly_name: 'AC Output Power',
+            unit_of_measurement: 'W'
+          }
+        } : {
+          state: 'unavailable',
+          attributes: {}
         }
       }
     });
-    
+
     // Wait a moment for the custom element to be fully registered
     await customElements.whenDefined('ha-panel-lovelace');
-    
+
     console.log('✓ Mock HA environment ready');
-    
+
     // Now load the card script
     const loadCardScript = () => {
       return new Promise((resolve, reject) => {
@@ -161,71 +174,75 @@
         document.head.appendChild(script);
       });
     };
-    
+
     try {
       await loadCardScript();
-      
+
       // Wait for the custom element to be defined
       await customElements.whenDefined('eco-battery-card');
-      
+
       console.log('✓ eco-battery-card registered');
-      
+
       // Discharge Mode Tests
       const dischargeConfigs = [
         {
-          label: 'High Battery (85%) - 5h 33min left',
+          label: 'High Battery (85%) - 5h 33min - 350W output',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(85, 333, 0) // 333 minutes = 5h 33min discharge
+          hass: createMockHass(85, 333, 0, 350) // 333 minutes, 350W output
         },
         {
-          label: 'Medium Battery (55%) - 2h 15min left',
+          label: 'Medium Battery (55%) - 2h 15min - 1.2kW output',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(55, 135, 0) // 135 minutes = 2h 15min
+          hass: createMockHass(55, 135, 0, 1200) // 135 minutes, 1200W output
         },
         {
-          label: 'Low Battery (20%) - 45min left',
+          label: 'Low Battery (20%) - 45min - 750W output',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(20, 45, 0)
+          hass: createMockHass(20, 45, 0, 750)
         },
         {
-          label: 'Critical Battery (8%) - 12min left',
+          label: 'Critical Battery (8%) - 12min - 150W output',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(8, 12, 0)
+          hass: createMockHass(8, 12, 0, 150)
         }
       ];
-      
+
       // Charge Mode Tests
       const chargeConfigs = [
         {
@@ -281,37 +298,39 @@
           hass: createMockHass(95, 0, 30)
         }
       ];
-      
+
       // Misc Tests
       const miscConfigs = [
         {
-          label: 'Gradient Mode - Discharging',
+          label: 'Gradient Mode - Discharging 900W',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
             palette: 'gradient',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(72, 180, 0)
+          hass: createMockHass(72, 180, 0, 900)
         },
         {
-          label: 'Gradient Mode - Charging',
+          label: 'Gradient Mode - Charging (no power)',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
             palette: 'gradient',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(42, 0, 150)
+          hass: createMockHass(42, 0, 150, 0)
         },
         {
-          label: 'No Time Sensors',
+          label: 'No Sensors - Just Battery %',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
@@ -322,54 +341,55 @@
           hass: createMockHass(67)
         },
         {
-          label: '10 Segments - Charging',
+          label: '10 Segments - 2.5kW Output',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
             palette: 'threshold',
             segments: 10,
             gap: 2
           },
-          hass: createMockHass(63, 0, 95)
+          hass: createMockHass(63, 90, 0, 2500)
         }
       ];
-      
+
       // Helper function to render cards
       const renderCards = (configs, containerId) => {
         const container = document.getElementById(containerId);
         container.innerHTML = '';
-        
-        configs.forEach(({label, config, hass}) => {
+
+        configs.forEach(({ label, config, hass }) => {
           const wrapper = document.createElement('div');
           wrapper.className = 'test-card-wrapper';
-          
+
           const labelDiv = document.createElement('div');
           labelDiv.className = 'test-label';
           labelDiv.textContent = label;
-          
+
           const card = document.createElement('eco-battery-card');
           card.setConfig(config);
           card.hass = hass;
-          
+
           wrapper.appendChild(labelDiv);
           wrapper.appendChild(card);
           container.appendChild(wrapper);
         });
       };
-      
+
       // Render all test sections
       renderCards(dischargeConfigs, 'discharge-container');
       renderCards(chargeConfigs, 'charge-container');
       renderCards(miscConfigs, 'misc-container');
-      
+
       console.log('✓ Test cards rendered successfully');
       console.log('📊 Total cards:', dischargeConfigs.length + chargeConfigs.length + miscConfigs.length);
-      
+
     } catch (error) {
       console.error('✗ Error initializing test page:', error);
-      document.body.innerHTML = 
+      document.body.innerHTML =
         `<div style="text-align:center;color:var(--error-color);padding:40px;max-width:800px;margin:0 auto;">
           <h2>❌ Error Loading Card</h2>
           <p>Make sure <code>eco-battery-card.js</code> is in the same directory as this HTML file.</p>
@@ -378,5 +398,5 @@
     }
   </script>
 </body>
-</html>
 
+</html>
