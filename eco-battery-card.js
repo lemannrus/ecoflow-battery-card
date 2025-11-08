@@ -167,20 +167,30 @@ class EcoBatteryCard extends LitBase {
 
     const startX = bodyX + bodyW;
     const endX = W - PAD - 15;
-    const distance = endX - startX;
     const y = bodyY + bodyH / 2;
 
-    // Create 8 particles with staggered delays for seamless continuous flow
-    for (let i = 1; i <= 8; i++) {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('class', `flow-particle particle-${i}`);
-      circle.setAttribute('r', '2.5');
-      circle.setAttribute('cx', String(startX));
-      circle.setAttribute('cy', String(y));
-      circle.setAttribute('fill', color);
-      circle.style.setProperty('--flow-distance', `${distance}px`);
+    // Create 12 particles for seamless continuous flow even during restarts
+    for (let i = 1; i <= 12; i++) {
+      // Create a group element that can be transformed
+      const particleGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      particleGroup.setAttribute('class', `flow-particle-wrapper particle-${i}`);
 
-      mainG.appendChild(circle);
+      // Create circle at origin (0,0) relative to group
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', 'flow-particle-circle');
+      circle.setAttribute('r', '2.5');
+      circle.setAttribute('cx', '0');
+      circle.setAttribute('cy', '0');
+      circle.setAttribute('fill', color);
+
+      particleGroup.appendChild(circle);
+
+      // Position the group at start point and animate from there
+      particleGroup.style.setProperty('--start-x', `${startX}px`);
+      particleGroup.style.setProperty('--start-y', `${y}px`);
+      particleGroup.style.setProperty('--end-x', `${endX}px`);
+
+      mainG.appendChild(particleGroup);
     }
 
     return mainG;
@@ -401,6 +411,8 @@ class EcoBatteryCard extends LitBase {
       }
       .time-icon {
         font-size: 40px;
+        color: white;
+        filter: brightness(0) invert(1);
         opacity: 0.85;
       }
       .time-value {
@@ -422,6 +434,8 @@ class EcoBatteryCard extends LitBase {
       }
       .power-icon {
         font-size: 28px;
+        color: white;
+        filter: brightness(0) invert(1);
         opacity: 0.9;
         animation: pulse 2s ease-in-out infinite;
       }
@@ -438,18 +452,25 @@ class EcoBatteryCard extends LitBase {
       .energy-flow {
         opacity: 0.9;
       }
-      .flow-particle {
-        filter: drop-shadow(0 0 3px currentColor);
-        animation: flowParticle 2.4s linear infinite;
+      .flow-particle-wrapper {
+        animation: flowParticle 3s linear infinite;
+        transform-origin: 0 0;
       }
-      .flow-particle.particle-1 { animation-delay: 0s; }
-      .flow-particle.particle-2 { animation-delay: 0.3s; }
-      .flow-particle.particle-3 { animation-delay: 0.6s; }
-      .flow-particle.particle-4 { animation-delay: 0.9s; }
-      .flow-particle.particle-5 { animation-delay: 1.2s; }
-      .flow-particle.particle-6 { animation-delay: 1.5s; }
-      .flow-particle.particle-7 { animation-delay: 1.8s; }
-      .flow-particle.particle-8 { animation-delay: 2.1s; }
+      .flow-particle-wrapper.particle-1 { animation-delay: 0s; }
+      .flow-particle-wrapper.particle-2 { animation-delay: 0.25s; }
+      .flow-particle-wrapper.particle-3 { animation-delay: 0.5s; }
+      .flow-particle-wrapper.particle-4 { animation-delay: 0.75s; }
+      .flow-particle-wrapper.particle-5 { animation-delay: 1s; }
+      .flow-particle-wrapper.particle-6 { animation-delay: 1.25s; }
+      .flow-particle-wrapper.particle-7 { animation-delay: 1.5s; }
+      .flow-particle-wrapper.particle-8 { animation-delay: 1.75s; }
+      .flow-particle-wrapper.particle-9 { animation-delay: 2s; }
+      .flow-particle-wrapper.particle-10 { animation-delay: 2.25s; }
+      .flow-particle-wrapper.particle-11 { animation-delay: 2.5s; }
+      .flow-particle-wrapper.particle-12 { animation-delay: 2.75s; }
+      .flow-particle-circle {
+        filter: drop-shadow(0 0 3px currentColor);
+      }
       .status-indicator {
         filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
       }
@@ -463,16 +484,19 @@ class EcoBatteryCard extends LitBase {
       }
       .status-icon-charging {
         animation: bounceUp 1.5s ease-in-out infinite;
+        filter: brightness(0) invert(1);
         user-select: none;
         pointer-events: none;
       }
       .status-icon-discharging {
         animation: bounceDown 1.5s ease-in-out infinite;
+        filter: brightness(0) invert(1);
         user-select: none;
         pointer-events: none;
       }
       .status-icon-connected {
         animation: scaleIcon 1.5s ease-in-out infinite;
+        filter: brightness(0) invert(1);
         user-select: none;
         pointer-events: none;
       }
@@ -481,10 +505,22 @@ class EcoBatteryCard extends LitBase {
         50% { opacity: 1; transform: scale(1.1); }
       }
       @keyframes flowParticle {
-        0% { opacity: 0; transform: translateX(0); }
-        5% { opacity: 0.8; }
-        95% { opacity: 0.8; }
-        100% { opacity: 0; transform: translateX(var(--flow-distance, 89px)); }
+        0% { 
+          opacity: 0; 
+          transform: translate(var(--start-x), var(--start-y));
+        }
+        3% { 
+          opacity: 0.7; 
+          transform: translate(var(--start-x), var(--start-y));
+        }
+        97% { 
+          opacity: 0.7; 
+          transform: translate(var(--end-x), var(--start-y));
+        }
+        100% { 
+          opacity: 0; 
+          transform: translate(var(--end-x), var(--start-y));
+        }
       }
       @keyframes ringPulse {
         0%, 100% { opacity: 0.6; transform: scale(1); }
@@ -516,4 +552,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.1.18 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.1.23 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
