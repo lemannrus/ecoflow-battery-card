@@ -180,7 +180,8 @@ class EcoBatteryCard extends LitBase {
     // Determine charging/discharging state
     const isCharging = remainingTime?.type === 'charge';
     const isDischarging = remainingTime?.type === 'discharge';
-    const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : '');
+    const isConnected = !isCharging && !isDischarging && (this._config.remaining_time_entity || this._config.charge_remaining_time_entity);
+    const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : (isConnected ? '⚡' : ''));
 
     // Battery segments (vertical columns), fill left-to-right
     const numSegments = this._config.segments;
@@ -240,16 +241,16 @@ class EcoBatteryCard extends LitBase {
             <text x="${bodyX + bodyW / 2}" y="${bodyY + bodyH / 2}"
                   text-anchor="middle" dominant-baseline="central" class="pct" fill="white">${stateText}</text>
             
-            <!-- Status Indicator Circle (Charging/Discharging) -->
-            ${(isCharging || isDischarging) ? svg`
+            <!-- Status Indicator Circle (Charging/Discharging/Connected) -->
+            ${(isCharging || isDischarging || isConnected) ? svg`
               <g class="status-indicator" transform="translate(${W - PAD - 15}, ${bodyY + bodyH / 2})">
                 <!-- Animated outer ring -->
-                <circle class="status-ring" r="12" fill="none" stroke="${color}" stroke-width="2" opacity="0.6">
+                <circle class="status-ring" r="12" fill="none" stroke="${isConnected ? 'var(--success-color, #43a047)' : color}" stroke-width="2" opacity="0.6">
                   <animate attributeName="r" values="12;14;12" dur="2s" repeatCount="indefinite" />
                   <animate attributeName="opacity" values="0.6;0.3;0.6" dur="2s" repeatCount="indefinite" />
                 </circle>
                 <!-- Inner circle background -->
-                <circle r="10" fill="${color}" opacity="0.9">
+                <circle r="10" fill="${isConnected ? 'var(--success-color, #43a047)' : color}" opacity="0.9">
                   <animate attributeName="opacity" values="0.9;1;0.9" dur="2s" repeatCount="indefinite" />
                 </circle>
                 <!-- Icon -->
@@ -263,6 +264,10 @@ class EcoBatteryCard extends LitBase {
                   ${isDischarging ? svg`
                     <animateTransform attributeName="transform" type="translate" 
                       values="0,-1;0,1;0,-1" dur="1.5s" repeatCount="indefinite" additive="sum" />
+                  ` : ''}
+                  ${isConnected ? svg`
+                    <animateTransform attributeName="transform" type="scale" 
+                      values="1;1.3;1" dur="1.5s" repeatCount="indefinite" additive="sum" />
                   ` : ''}
                 </text>
               </g>
@@ -308,7 +313,7 @@ class EcoBatteryCard extends LitBase {
           ${acOutPower && acOutPower > 0 ? html`
             <div class="power-output">
               <span class="power-icon">⚡</span>
-              <span class="power-label">Output:</span>
+              <span class="power-label">Out:</span>
               <span class="power-value">${this._formatPower(acOutPower)}</span>
             </div>
           ` : ''}

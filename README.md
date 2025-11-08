@@ -26,11 +26,12 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 - **Visual Battery Display**: SVG battery with segmented columns that fill left-to-right
 - **Color-Coded Status**: Green (good), yellow (warning), red (critical) battery levels
-- **Animated Status Indicator**: Pulsing circular badge on the right showing charging (↑) or discharging (↓) state
-  - Color-matched circle with up arrow when charging (bounces up)
-  - Color-matched circle with down arrow when discharging (bounces down)
+- **Animated Status Indicator**: Pulsing circular badge on the right showing battery state
+  - ↑ Color-matched circle with up arrow when charging (bounces up)
+  - ↓ Color-matched circle with down arrow when discharging (bounces down)
+  - ⚡ Green circle with lightning bolt when connected to power but idle (scales/pulses)
   - Smooth pulsing ring animation
-  - Icons animate with bouncing motion
+  - Icons animate with motion (bounce or scale)
 - **Animated Energy Flow**: Beautiful animated particles flowing from battery to output when power is being used
 - **Real-Time Power Display**: Shows current AC output power with automatic W/kW formatting
 - **Smart Time Display**: Automatically shows discharge time (⏱) or charge time (⚡) with automatic formatting
@@ -167,7 +168,10 @@ yellow: 30
 ```
 
 The card will automatically show:
-- 🔵 **Animated status badge** on the right (↑ colored circle when charging, ↓ colored circle when discharging)
+- 🔵 **Animated status badge** on the right:
+  - ↑ Colored circle when charging (has charge remaining time)
+  - ↓ Colored circle when discharging (has discharge remaining time)
+  - ⚡ Green circle when connected to power but idle (neither charging nor discharging)
 - ⏱ **Discharge time** when battery is providing power (e.g., "5h 33min")
 - ⚡ **Charge time** when battery is charging (e.g., "2h 15min")
 - 🌊 **Animated energy flow** particles when power is being consumed

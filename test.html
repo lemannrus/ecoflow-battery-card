@@ -90,6 +90,9 @@
   <div class="section-title">⚡ Charge Mode (Battery Charging)</div>
   <div id="charge-container" class="test-container"></div>
 
+  <div class="section-title">🔌 Connected Mode (Idle - Not Charging/Discharging)</div>
+  <div id="connected-container" class="test-container"></div>
+
   <div class="section-title">🎨 Various Configurations</div>
   <div id="misc-container" class="test-container"></div>
 
@@ -299,6 +302,63 @@
         }
       ];
 
+      // Connected Mode Tests (idle - neither charging nor discharging)
+      const connectedConfigs = [
+        {
+          label: 'Connected - Full Battery (100%)',
+          config: {
+            entity: 'sensor.ecoflow_battery',
+            name: 'EcoFlow Delta 2',
+            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            palette: 'threshold',
+            segments: 5,
+            gap: 3
+          },
+          hass: createMockHass(100, 0, 0, 0) // Both time sensors at 0, no power
+        },
+        {
+          label: 'Connected - High Battery (85%)',
+          config: {
+            entity: 'sensor.ecoflow_battery',
+            name: 'EcoFlow Delta 2',
+            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            palette: 'threshold',
+            segments: 5,
+            gap: 3
+          },
+          hass: createMockHass(85, 0, 0) // Both sensors at 0
+        },
+        {
+          label: 'Connected - Medium Battery (60%)',
+          config: {
+            entity: 'sensor.ecoflow_battery',
+            name: 'EcoFlow Delta 2',
+            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            palette: 'threshold',
+            segments: 5,
+            gap: 3
+          },
+          hass: createMockHass(60, 0, 0)
+        },
+        {
+          label: 'Connected - Low Battery (30%)',
+          config: {
+            entity: 'sensor.ecoflow_battery',
+            name: 'EcoFlow Delta 2',
+            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            palette: 'threshold',
+            segments: 5,
+            gap: 3
+          },
+          hass: createMockHass(30, 0, 0)
+        }
+      ];
+
       // Misc Tests
       const miscConfigs = [
         {
@@ -382,10 +442,11 @@
       // Render all test sections
       renderCards(dischargeConfigs, 'discharge-container');
       renderCards(chargeConfigs, 'charge-container');
+      renderCards(connectedConfigs, 'connected-container');
       renderCards(miscConfigs, 'misc-container');
 
       console.log('✓ Test cards rendered successfully');
-      console.log('📊 Total cards:', dischargeConfigs.length + chargeConfigs.length + miscConfigs.length);
+      console.log('📊 Total cards:', dischargeConfigs.length + chargeConfigs.length + connectedConfigs.length + miscConfigs.length);
 
     } catch (error) {
       console.error('✗ Error initializing test page:', error);
