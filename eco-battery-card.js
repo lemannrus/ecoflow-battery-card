@@ -526,11 +526,7 @@ class EcoBatteryCard extends LitBase {
           <text x="${centerX}" y="${squareStartY + squareSize * 0.35}" text-anchor="middle" dominant-baseline="central" class="pct-square" fill="white">${pct.toFixed(this._config.precision)}%</text>
           
           <!-- Time info inside square (below percentage) -->
-          ${remainingTime ? svg`
-            <text x="${centerX}" y="${squareStartY + squareSize * 0.65}" text-anchor="middle" dominant-baseline="central" class="time-text-square" fill="white">
-              ${remainingTime.type === 'charge' ? '⚡' : '⏱'} ${remainingTime.time}
-            </text>
-          ` : ''}
+          <text x="${centerX}" y="${squareStartY + squareSize * 0.65}" text-anchor="middle" dominant-baseline="central" class="time-text-square" fill="white">${remainingTime ? (remainingTime.type === 'charge' ? '⚡' : '⏱') + ' ' + remainingTime.time : ''}</text>
           
           <!-- Status indicator -->
           ${statusIcon ? this._renderVerticalStatusIndicator(centerX, statusY, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
