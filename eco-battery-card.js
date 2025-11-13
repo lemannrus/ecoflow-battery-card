@@ -426,68 +426,18 @@ class EcoBatteryCard extends LitBase {
     const remainingTime = this._remainingTime(batteryIndex);
     const acOutPower = this._acOutPower(batteryIndex);
 
-    // Vertical battery dimensions (increased for better visibility on Nest Hub)
-    const batteryW = 70;
-    const batteryH = 140;
-    const capW = 28;
-    const capH = 10;
+    // Single square dimensions (increased for better visibility)
+    const squareSize = 140; // Width and height of the square
     const svgPadding = 8;
+    const squareStartY = 45; // Leave space for name above
 
-    // Center everything in the SVG's own coordinate system
-    const centerX = batteryW / 2 + svgPadding;
-    const bodyX = svgPadding;
-    const bodyY = 50; // Leave space for name above
-    const capX = centerX - capW / 2;
-    const capY = bodyY - capH - 2;
+    // Center X position
+    const centerX = squareSize / 2 + svgPadding;
+    const squareX = svgPadding;
 
-    // Inner dimensions
-    const innerX = bodyX + 5;
-    const innerY = bodyY + 5;
-    const innerW = batteryW - 10;
-    const innerH = batteryH - 10;
-
-    // Calculate segments (horizontal rows, fill bottom-to-top)
-    const numSegments = this._config.segments;
-    const gap = this._config.gap;
-    const segmentH = (innerH - (numSegments - 1) * gap) / numSegments;
-
-    const progressRows = (pct / 100) * numSegments;
-    const fullRows = Math.floor(progressRows);
-    const partialFrac = progressRows - fullRows;
-
-    // Create segment rectangles (bottom to top)
-    const segments = [];
-    const createRect = (attrs) => {
-      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      for (const [k, v] of Object.entries(attrs)) {
-        r.setAttribute(k, String(v));
-      }
-      return r;
-    };
-
-    for (let i = 0; i < numSegments; i++) {
-      const yPos = innerY + innerH - (i + 1) * (segmentH + gap) + gap;
-      // Background
-      segments.push(createRect({
-        x: innerX, y: yPos, width: innerW, height: segmentH, rx: 2, ry: 2,
-        fill: '#333333', class: 'segment', stroke: 'rgba(255,255,255,0.15)', 'stroke-width': 0.5,
-      }));
-
-      // Fill (bottom to top)
-      let h = 0;
-      if (i < fullRows) {
-        h = segmentH;
-      } else if (i === fullRows && partialFrac > 0) {
-        h = Math.max(0, Math.min(segmentH, segmentH * partialFrac));
-      }
-      if (h > 0) {
-        const fillY = yPos + (segmentH - h);
-        segments.push(createRect({
-          x: innerX, y: fillY, width: innerW, height: h, rx: 2, ry: 2,
-          fill: color, class: 'segment',
-        }));
-      }
-    }
+    // Calculate fill height based on percentage
+    const fillHeight = (squareSize * pct) / 100;
+    const fillY = squareStartY + squareSize - fillHeight;
 
     // Status determination
     const isCharging = remainingTime?.type === 'charge';
@@ -495,11 +445,11 @@ class EcoBatteryCard extends LitBase {
     const isConnected = !isCharging && !isDischarging && (battery.remaining_time_entity || battery.charge_remaining_time_entity);
     const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : (isConnected ? '⚡' : ''));
 
-    // Status circle position (below battery)
-    const statusY = bodyY + batteryH + 40;
+    // Status circle position (below square)
+    const statusY = squareStartY + squareSize + 40;
 
     // Total SVG dimensions
-    const svgWidth = batteryW + (svgPadding * 2);
+    const svgWidth = squareSize + (svgPadding * 2);
     const svgHeight = statusY + 35;
 
     return html`
@@ -508,35 +458,50 @@ class EcoBatteryCard extends LitBase {
           <!-- Battery name -->
           <text x="${centerX}" y="25" text-anchor="middle" class="battery-name" fill="var(--primary-text-color)">${battery.name || `Battery ${batteryIndex + 1}`}</text>
           
-          <!-- Battery cap (top) -->
-          <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}" class="cap-vertical" />
+          <!-- Square container (background) -->
+          <rect 
+            x="${squareX}" 
+            y="${squareStartY}" 
+            width="${squareSize}" 
+            height="${squareSize}" 
+            rx="8" 
+            ry="8"
+            fill="rgba(50, 50, 50, 0.3)"
+            stroke="rgba(255, 255, 255, 0.3)"
+            stroke-width="2"
+            class="square-bg"
+          />
           
-          <!-- Battery body -->
-          <rect x="${bodyX}" y="${bodyY}" rx="6" ry="6" width="${batteryW}" height="${batteryH}" class="case-vertical" />
+          <!-- Fill rectangle (fills from bottom to top) -->
+          <rect 
+            x="${squareX + 3}" 
+            y="${fillY}" 
+            width="${squareSize - 6}" 
+            height="${fillHeight > 0 ? fillHeight : 0}" 
+            rx="6" 
+            ry="6"
+            fill="${color}"
+            class="square-fill"
+          />
           
-          <!-- Inner area -->
-          <rect x="${innerX}" y="${innerY}" rx="2" ry="2" width="${innerW}" height="${innerH}" class="inner-bg" />
+          <!-- Percentage text (centered in square, upper portion) -->
+          <text x="${centerX}" y="${squareStartY + squareSize * 0.35}" text-anchor="middle" dominant-baseline="central" class="pct-square" fill="white">${pct.toFixed(this._config.precision)}%</text>
           
-          <!-- Segments -->
-          ${segments}
-          
-          <!-- Percentage text -->
-          <text x="${centerX}" y="${bodyY + batteryH / 2}" text-anchor="middle" dominant-baseline="central" class="pct-vertical" fill="white">${pct.toFixed(this._config.precision)}%</text>
+          <!-- Time info inside square (below percentage) -->
+          ${remainingTime ? svg`
+            <text x="${centerX}" y="${squareStartY + squareSize * 0.65}" text-anchor="middle" dominant-baseline="central" class="time-text-square" fill="white">
+              ${remainingTime.type === 'charge' ? '⚡' : '⏱'} ${remainingTime.time}
+            </text>
+          ` : ''}
           
           <!-- Status indicator -->
           ${statusIcon ? this._renderVerticalStatusIndicator(centerX, statusY, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
         </svg>
         
-        <!-- Time and power info -->
-        ${remainingTime ? html`
-          <div class="battery-time">
-            <span class="time-icon-small">${remainingTime.type === 'charge' ? '⚡' : '⏱'}</span>
-            <span class="time-value-small">${remainingTime.time}</span>
-          </div>
-        ` : ''}
+        <!-- Power info below status circle -->
         ${acOutPower && acOutPower > 0 ? html`
-          <div class="battery-power">
-            <span class="power-value-small">${this._formatPower(acOutPower)}</span>
+          <div class="battery-power-below">
+            <span class="power-value-below">${this._formatPower(acOutPower)}</span>
           </div>
         ` : ''}
       </div>
@@ -588,12 +553,12 @@ class EcoBatteryCard extends LitBase {
             </div>
           ` : ''}
           
-          <!-- Next Outage Info -->
-          ${!outageStatus.isActive && nextOutage.startTime ? html`
+          <!-- Next Outage Info (always show if available) -->
+          ${nextOutage.startTime ? html`
             <div class="outage-compact outage-next">
               <div class="outage-compact-header">
                 <span class="outage-icon">📅</span>
-                <span class="outage-label">Next Outage</span>
+                <span class="outage-label">${outageStatus.isActive ? 'Next Outage After This' : 'Next Outage'}</span>
               </div>
               <div class="outage-compact-info">
                 <span class="compact-value-lg">${this._formatDateTime(nextOutage.startTime)}</span>
@@ -611,7 +576,7 @@ class EcoBatteryCard extends LitBase {
   static get styles() {
     return css`
       /* Vertical battery layout */
-      ha-card.eco-card-vertical { padding: 12px; }
+      ha-card.eco-card-vertical { padding: 16px; }
       .batteries-container {
         display: -webkit-box;
         display: -webkit-flex;
@@ -621,7 +586,7 @@ class EcoBatteryCard extends LitBase {
         -webkit-box-pack: center;
         -webkit-justify-content: center;
         justify-content: center;
-        gap: 24px;
+        gap: 28px;
         margin-bottom: 12px;
       }
       .battery-column {
@@ -638,30 +603,51 @@ class EcoBatteryCard extends LitBase {
         gap: 8px;
       }
       .battery-svg {
-        width: 86px;
+        width: 156px;
         height: auto;
       }
       .battery-name {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 600;
         fill: var(--primary-text-color);
       }
-      .case-vertical {
-        fill: none;
-        stroke: var(--primary-text-color);
-        stroke-width: 3;
-        opacity: 0.85;
+      .square-bg {
+        transition: all 0.3s ease;
       }
-      .cap-vertical {
-        fill: var(--primary-text-color);
-        opacity: 0.8;
+      .square-fill {
+        transition: height 0.5s ease, y 0.5s ease;
+        filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 4px currentColor);
       }
-      .pct-vertical {
-        fill: var(--primary-text-color);
+      .pct-square {
+        fill: white;
         font-weight: 700;
-        font-size: 22px;
-        text-shadow: 0 0 3px rgba(0,0,0,0.8);
-        filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
+        font-size: 38px;
+        text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,1);
+        filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
+        pointer-events: none;
+      }
+      .time-text-square {
+        fill: white;
+        font-weight: 600;
+        font-size: 20px;
+        text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,1);
+        filter: drop-shadow(0 0 3px rgba(255,255,255,0.4));
+        pointer-events: none;
+      }
+      .battery-power-below {
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: flex;
+        -webkit-box-pack: center;
+        -webkit-justify-content: center;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      .power-value-below {
+        font-weight: 700;
+        font-size: 18px;
+        color: var(--success-color, #43a047);
+        text-shadow: 0 0 8px rgba(67, 160, 71, 0.6);
       }
       .battery-time, .battery-power {
         display: -webkit-box;
