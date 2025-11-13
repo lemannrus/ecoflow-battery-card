@@ -378,16 +378,16 @@ class EcoBatteryCard extends LitBase {
     // Outer ring
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     ring.setAttribute('class', 'status-ring-anim');
-    ring.setAttribute('r', '16');
+    ring.setAttribute('r', '22');
     ring.setAttribute('fill', 'none');
     ring.setAttribute('stroke', fillColor);
-    ring.setAttribute('stroke-width', '2');
+    ring.setAttribute('stroke-width', '2.5');
     g.appendChild(ring);
 
     // Inner circle
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('class', 'status-circle-anim');
-    ring.setAttribute('r', '13');
+    circle.setAttribute('r', '18');
     circle.setAttribute('fill', fillColor);
     g.appendChild(circle);
 
@@ -397,7 +397,7 @@ class EcoBatteryCard extends LitBase {
     text.setAttribute('y', '0');
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'central');
-    text.setAttribute('font-size', '16');
+    text.setAttribute('font-size', '22');
     text.setAttribute('fill', 'white');
     text.setAttribute('font-weight', 'bold');
     text.textContent = statusIcon;
@@ -426,25 +426,25 @@ class EcoBatteryCard extends LitBase {
     const remainingTime = this._remainingTime(batteryIndex);
     const acOutPower = this._acOutPower(batteryIndex);
 
-    // Vertical battery dimensions
-    const batteryW = 50;
-    const batteryH = 100;
-    const capW = 20;
-    const capH = 8;
-    const svgPadding = 5;
+    // Vertical battery dimensions (increased for better visibility on Nest Hub)
+    const batteryW = 70;
+    const batteryH = 140;
+    const capW = 28;
+    const capH = 10;
+    const svgPadding = 8;
 
     // Center everything in the SVG's own coordinate system
     const centerX = batteryW / 2 + svgPadding;
     const bodyX = svgPadding;
-    const bodyY = 40; // Leave space for name above
+    const bodyY = 50; // Leave space for name above
     const capX = centerX - capW / 2;
     const capY = bodyY - capH - 2;
 
     // Inner dimensions
-    const innerX = bodyX + 4;
-    const innerY = bodyY + 4;
-    const innerW = batteryW - 8;
-    const innerH = batteryH - 8;
+    const innerX = bodyX + 5;
+    const innerY = bodyY + 5;
+    const innerW = batteryW - 10;
+    const innerH = batteryH - 10;
 
     // Calculate segments (horizontal rows, fill bottom-to-top)
     const numSegments = this._config.segments;
@@ -496,17 +496,17 @@ class EcoBatteryCard extends LitBase {
     const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : (isConnected ? '⚡' : ''));
 
     // Status circle position (below battery)
-    const statusY = bodyY + batteryH + 30;
+    const statusY = bodyY + batteryH + 40;
 
     // Total SVG dimensions
     const svgWidth = batteryW + (svgPadding * 2);
-    const svgHeight = statusY + 30;
+    const svgHeight = statusY + 35;
 
     return html`
       <div class="battery-column">
         <svg class="battery-svg" viewBox="0 0 ${svgWidth} ${svgHeight}">
           <!-- Battery name -->
-          <text x="${centerX}" y="20" text-anchor="middle" class="battery-name" fill="var(--primary-text-color)">${battery.name || `Battery ${batteryIndex + 1}`}</text>
+          <text x="${centerX}" y="25" text-anchor="middle" class="battery-name" fill="var(--primary-text-color)">${battery.name || `Battery ${batteryIndex + 1}`}</text>
           
           <!-- Battery cap (top) -->
           <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}" class="cap-vertical" />
@@ -621,8 +621,8 @@ class EcoBatteryCard extends LitBase {
         -webkit-box-pack: center;
         -webkit-justify-content: center;
         justify-content: center;
-        gap: 20px;
-        margin-bottom: 10px;
+        gap: 24px;
+        margin-bottom: 12px;
       }
       .battery-column {
         display: -webkit-box;
@@ -635,21 +635,21 @@ class EcoBatteryCard extends LitBase {
         -webkit-box-align: center;
         -webkit-align-items: center;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
       }
       .battery-svg {
-        width: 60px;
+        width: 86px;
         height: auto;
       }
       .battery-name {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
         fill: var(--primary-text-color);
       }
       .case-vertical {
         fill: none;
         stroke: var(--primary-text-color);
-        stroke-width: 2.5;
+        stroke-width: 3;
         opacity: 0.85;
       }
       .cap-vertical {
@@ -659,7 +659,7 @@ class EcoBatteryCard extends LitBase {
       .pct-vertical {
         fill: var(--primary-text-color);
         font-weight: 700;
-        font-size: 16px;
+        font-size: 22px;
         text-shadow: 0 0 3px rgba(0,0,0,0.8);
         filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
       }
@@ -670,12 +670,12 @@ class EcoBatteryCard extends LitBase {
         -webkit-box-align: center;
         -webkit-align-items: center;
         align-items: center;
-        gap: 4px;
-        font-size: 11px;
+        gap: 5px;
+        font-size: 13px;
         color: var(--secondary-text-color);
       }
       .time-icon-small {
-        font-size: 12px;
+        font-size: 14px;
         opacity: 0.8;
       }
       .time-value-small {
@@ -685,7 +685,7 @@ class EcoBatteryCard extends LitBase {
       .power-value-small {
         font-weight: 700;
         color: var(--success-color, #43a047);
-        font-size: 12px;
+        font-size: 14px;
       }
       .outage-info-container {
         margin-top: 8px;
