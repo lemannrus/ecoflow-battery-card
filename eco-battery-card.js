@@ -1,7 +1,7 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.2.0
+ * Version: 0.2.1
  *
  * Config example:
  * type: custom:eco-battery-card
@@ -21,8 +21,6 @@
  * outage_status_entity: sensor.outage_status  # optional (binary: on/off or active/inactive)
  * outage_end_time_entity: sensor.outage_end_time  # optional (datetime or timestamp)
  * next_outage_time_entity: sensor.next_outage_time  # optional (datetime or timestamp)
- * charge_rate_watts: 1000  # optional (charging power in watts, for time calculations)
- * battery_capacity_wh: 1024  # optional (battery capacity in watt-hours)
  */
 
 /* Lit helpers from HA (pattern used by many cards) */
@@ -55,8 +53,6 @@ class EcoBatteryCard extends LitBase {
       outage_status_entity: config.outage_status_entity || null,
       outage_end_time_entity: config.outage_end_time_entity || null,
       next_outage_time_entity: config.next_outage_time_entity || null,
-      charge_rate_watts: typeof config.charge_rate_watts === 'number' ? config.charge_rate_watts : 1000,
-      battery_capacity_wh: typeof config.battery_capacity_wh === 'number' ? config.battery_capacity_wh : 1024,
       green: typeof config.green === 'number' ? config.green : 60,
       yellow: typeof config.yellow === 'number' ? config.yellow : 25,
       show_state: config.show_state !== false,
@@ -241,19 +237,6 @@ class EcoBatteryCard extends LitBase {
   }
 
   /**
-   * Calculate time needed to charge battery to target percentage
-   * Returns minutes needed
-   */
-  _calculateChargeTime(currentPct, targetPct = 100) {
-    if (currentPct >= targetPct) return 0;
-
-    const pctToCharge = targetPct - currentPct;
-    const whToCharge = (this._config.battery_capacity_wh * pctToCharge) / 100;
-    const hoursNeeded = whToCharge / this._config.charge_rate_watts;
-    return Math.ceil(hoursNeeded * 60);
-  }
-
-  /**
    * Analyze outage situation and provide recommendations
    * Returns: {
    *   sufficientForOutage: boolean|null,
@@ -297,19 +280,26 @@ class EcoBatteryCard extends LitBase {
     }
 
     // Analysis 2: Next outage - can we charge enough?
-    if (!outageStatus.isActive && nextOutage.minutesUntil !== null) {
-      const chargeTimeNeeded = this._calculateChargeTime(currentPct, 100);
-      canChargeBeforeNext = nextOutage.minutesUntil >= chargeTimeNeeded;
+    if (!outageStatus.isActive && nextOutage.minutesUntil !== null && this._config.charge_remaining_time_entity) {
+      // Get actual charge time from sensor
+      const chargeSt = this.hass?.states?.[this._config.charge_remaining_time_entity];
+      if (chargeSt && chargeSt.state && chargeSt.state !== 'unknown' && chargeSt.state !== 'unavailable') {
+        const chargeTimeNeeded = Number(chargeSt.state);
 
-      if (currentPct < 80) {
-        if (!canChargeBeforeNext) {
-          warningLevel = warningLevel === 'critical' ? 'critical' : 'warning';
-          message = message || `⚠️ Not enough time to fully charge before next outage!`;
-        } else {
-          const timeMargin = nextOutage.minutesUntil - chargeTimeNeeded;
-          if (timeMargin < 60 && warningLevel === 'ok') {
-            warningLevel = 'info';
-            message = message || `⏰ Start charging soon - ${this._formatMinutes(timeMargin)} margin`;
+        if (Number.isFinite(chargeTimeNeeded) && chargeTimeNeeded > 0) {
+          canChargeBeforeNext = nextOutage.minutesUntil >= chargeTimeNeeded;
+
+          if (currentPct < 80) {
+            if (!canChargeBeforeNext) {
+              warningLevel = warningLevel === 'critical' ? 'critical' : 'warning';
+              message = message || `⚠️ Not enough time to fully charge before next outage!`;
+            } else {
+              const timeMargin = nextOutage.minutesUntil - chargeTimeNeeded;
+              if (timeMargin < 60 && warningLevel === 'ok') {
+                warningLevel = 'info';
+                message = message || `⏰ Start charging soon - ${this._formatMinutes(timeMargin)} margin`;
+              }
+            }
           }
         }
       }
@@ -753,8 +743,14 @@ class EcoBatteryCard extends LitBase {
       
       /* Outage Analysis Styles */
       .outage-analysis {
+        display: -webkit-box;
+        display: -webkit-flex;
         display: flex;
+        -webkit-box-align: center;
+        -webkit-align-items: center;
         align-items: center;
+        -webkit-box-pack: center;
+        -webkit-justify-content: center;
         justify-content: center;
         padding: 6px 12px;
         margin-top: 6px;
@@ -762,10 +758,12 @@ class EcoBatteryCard extends LitBase {
         font-size: 13px;
         font-weight: 600;
         text-align: center;
+        box-sizing: border-box;
       }
       .outage-analysis.critical {
         background: var(--error-color, #e53935);
         color: white;
+        -webkit-animation: alertPulse 2s ease-in-out infinite;
         animation: alertPulse 2s ease-in-out infinite;
       }
       .outage-analysis.warning {
@@ -781,7 +779,8 @@ class EcoBatteryCard extends LitBase {
         color: white;
       }
       .analysis-message {
-        line-height: 1.3;
+        line-height: 1.4;
+        word-break: break-word;
       }
       
       /* Compact Outage Styles */
@@ -791,12 +790,17 @@ class EcoBatteryCard extends LitBase {
         border-radius: 8px;
         padding: 8px 12px;
         margin-top: 6px;
+        box-sizing: border-box;
       }
       .outage-compact.outage-next {
         border-color: var(--info-color, #2196f3);
       }
       .outage-compact-header {
+        display: -webkit-box;
+        display: -webkit-flex;
         display: flex;
+        -webkit-box-align: center;
+        -webkit-align-items: center;
         align-items: center;
         gap: 6px;
         margin-bottom: 4px;
@@ -806,37 +810,57 @@ class EcoBatteryCard extends LitBase {
       }
       .outage-icon {
         font-size: 16px;
+        line-height: 1;
       }
       .outage-label {
+        -webkit-box-flex: 1;
+        -webkit-flex: 1;
         flex: 1;
       }
       .outage-compact-info {
+        display: -webkit-box;
+        display: -webkit-flex;
         display: flex;
+        -webkit-box-align: center;
+        -webkit-align-items: center;
         align-items: center;
+        -webkit-flex-wrap: wrap;
         flex-wrap: wrap;
         gap: 6px;
         font-size: 12px;
-        line-height: 1.4;
+        line-height: 1.5;
       }
       .compact-label {
-        color: var(--secondary-text-color);
+        color: var(--secondary-text-color, #9b9b9b);
         font-weight: 500;
       }
       .compact-value {
-        color: var(--primary-text-color);
+        color: var(--primary-text-color, #e1e1e1);
         font-weight: 600;
       }
       .compact-value-lg {
-        color: var(--primary-text-color);
+        color: var(--primary-text-color, #e1e1e1);
         font-weight: 700;
         font-size: 13px;
       }
       .compact-separator {
-        color: var(--divider-color);
+        color: var(--divider-color, #383838);
         opacity: 0.6;
+        -webkit-user-select: none;
+        user-select: none;
       }
       
       /* Alert Pulse Animation */
+      @-webkit-keyframes alertPulse {
+        0%, 100% { 
+          opacity: 1;
+          box-shadow: 0 0 0 0 var(--error-color, #e53935);
+        }
+        50% { 
+          opacity: 0.85;
+          box-shadow: 0 0 20px 5px rgba(229, 57, 53, 0.4);
+        }
+      }
       @keyframes alertPulse {
         0%, 100% { 
           opacity: 1;
@@ -857,4 +881,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.2.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.2.1 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
