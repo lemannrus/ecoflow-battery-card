@@ -1,183 +1,304 @@
-# Example Configuration for Eco Battery Card with Outage Integration
-# Version 0.2.0
+# Example Configuration for Eco Battery Card v0.3.0
+# With Multi-Battery Support and Outage Integration
 
-# Basic Configuration (without outage features)
+# ============================================
+# Single Battery Configuration (Basic)
+# ============================================
 type: custom:eco-battery-card
-entity: sensor.ecoflow_battery
-name: EcoFlow Delta 2
+batteries:
+  - entity: sensor.ecoflow_battery
+    name: Delta 2
+
+---
+
+# ============================================
+# Single Battery with Full Features
+# ============================================
+type: custom:eco-battery-card
+batteries:
+  - entity: sensor.delta_2_main_battery_level
+    name: Delta 2
+    remaining_time_entity: sensor.delta_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+    ac_out_power_entity: sensor.delta_2_ac_out_power
+
+# Outage Integration (using Yasno Integration)
+outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
+outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
+next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
+
+# Display Settings
 green: 60
 yellow: 25
-palette: gradient
-segments: 5
-gap: 3
 precision: 0
-show_state: true
-invert: false
-remaining_time_entity: sensor.delta_2_discharge_remaining_time
-charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
-ac_out_power_entity: sensor.delta_2_ac_out_power
+segments: 5
+gap: 2
+palette: gradient
 
 ---
 
-# Full Configuration (WITH outage features)
+# ============================================
+# Multi-Battery Configuration
+# ============================================
 type: custom:eco-battery-card
-entity: sensor.ecoflow_battery
-name: EcoFlow Delta 2
+batteries:
+  # Battery 1: EcoFlow Delta 2
+  - entity: sensor.delta_2_main_battery_level
+    name: Delta 2
+    remaining_time_entity: sensor.delta_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+    ac_out_power_entity: sensor.delta_2_ac_out_power
+  
+  # Battery 2: EcoFlow River 2
+  - entity: sensor.river_2_battery_level
+    name: River 2
+    remaining_time_entity: sensor.river_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.river_2_charge_remaining_time
+    ac_out_power_entity: sensor.river_2_ac_out_power
+  
+  # Battery 3: EcoFlow Delta Pro (optional)
+  - entity: sensor.delta_pro_battery_level
+    name: Delta Pro
+    remaining_time_entity: sensor.delta_pro_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_pro_charge_remaining_time
+    ac_out_power_entity: sensor.delta_pro_ac_out_power
 
-# Battery Display Settings
-green: 60        # Green threshold percentage
-yellow: 25       # Yellow threshold percentage
-palette: gradient  # 'threshold' or 'gradient'
-segments: 5      # Number of battery segments
-gap: 3           # Gap between segments in pixels
-precision: 0     # Decimal precision for percentage
-show_state: true
-invert: false
+# Which battery to use for outage analysis (0 = first, 1 = second, etc.)
+selected_battery: 0
 
-# EcoFlow Sensor Entities
-remaining_time_entity: sensor.delta_2_discharge_remaining_time
-charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
-ac_out_power_entity: sensor.delta_2_ac_out_power
+# Outage Integration (shared for all batteries)
+outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
+outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
+next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
 
-# Outage Integration Sensors
-outage_status_entity: sensor.outage_status  
-# Expected states: 'on'/'off', 'true'/'false', 'active'/'inactive', or '1'/'0'
-
-outage_end_time_entity: sensor.outage_end_time
-# Expected format: ISO datetime (2025-11-13T14:30:00) or Unix timestamp
-
-next_outage_time_entity: sensor.next_outage_time
-# Expected format: ISO datetime (2025-11-13T14:30:00) or Unix timestamp
-
-outage_schedule_entity: sensor.outage_schedule
-# Expected format: Plain text or JSON string with schedule information
-
-# Battery Specifications (for charge time calculations)
-charge_rate_watts: 1000    # Your charger's power output in watts
-battery_capacity_wh: 1024  # Battery capacity in watt-hours
-
----
-
-# Example: Creating Template Sensors for Outage Integration
-# Add these to your Home Assistant configuration.yaml
-
-template:
-  - sensor:
-      # Outage Status (example using a binary sensor)
-      - name: "Outage Status"
-        unique_id: outage_status
-        state: >
-          {{ states('binary_sensor.power_outage') }}
-        
-      # Outage End Time (example calculation)
-      - name: "Outage End Time"
-        unique_id: outage_end_time
-        state: >
-          {% if is_state('binary_sensor.power_outage', 'on') %}
-            {{ (now() + timedelta(hours=2)).isoformat() }}
-          {% else %}
-            unavailable
-          {% endif %}
-        
-      # Next Outage Time (example scheduled outage)
-      - name: "Next Outage Time"
-        unique_id: next_outage_time
-        state: >
-          {% set today = now().date() %}
-          {% set outage_hour = 14 %}
-          {% if now().hour < outage_hour %}
-            {{ today.replace(hour=outage_hour, minute=0).isoformat() }}
-          {% else %}
-            {{ (today + timedelta(days=1)).replace(hour=outage_hour, minute=0).isoformat() }}
-          {% endif %}
-        
-      # Outage Schedule (example text schedule)
-      - name: "Outage Schedule"
-        unique_id: outage_schedule
-        state: >
-          Daily: 14:00-16:00
-          Maintenance: Every Sunday 10:00-12:00
+# Display Settings (applied to all batteries)
+green: 60
+yellow: 25
+precision: 0
+segments: 5
+gap: 2
+palette: threshold
 
 ---
 
-# Example: Integration with DTEK (Ukrainian Energy Company) API
-# If you have a custom integration that provides outage information
+# ============================================
+# Configuration Option Explanations
+# ============================================
 
-template:
-  - sensor:
-      - name: "DTEK Outage Status"
-        unique_id: dtek_outage_status
-        state: >
-          {{ states('sensor.dtek_current_outage_status') }}
-        
-      - name: "DTEK Outage End Time"
-        unique_id: dtek_outage_end_time
-        state: >
-          {{ state_attr('sensor.dtek_schedule', 'end_time') }}
-        
-      - name: "DTEK Next Outage Time"
-        unique_id: dtek_next_outage_time
-        state: >
-          {{ state_attr('sensor.dtek_schedule', 'next_start_time') }}
-        
-      - name: "DTEK Outage Schedule"
-        unique_id: dtek_outage_schedule
-        state: >
-          {{ state_attr('sensor.dtek_schedule', 'schedule_text') }}
+# BATTERIES ARRAY (Required):
+#   Each battery object can have:
+#   - entity: (Required) Battery level sensor (0-100%)
+#   - name: (Optional) Display name for the battery
+#   - remaining_time_entity: (Optional) Discharge time in minutes
+#   - charge_remaining_time_entity: (Optional) Charge time in minutes
+#   - ac_out_power_entity: (Optional) AC output power in watts
+#   - invert: (Optional) Invert battery reading if needed
 
----
+# SELECTED_BATTERY (Optional, default: 0):
+#   Index of which battery to use for outage analysis
+#   0 = first battery, 1 = second battery, etc.
 
-# Features Explanation:
+# OUTAGE ENTITIES (Optional):
+#   outage_status_entity: Current outage status
+#     Supported states: 'on'/'off', 'true'/'false', 'active'/'inactive', '1'/'0'
+#   
+#   outage_end_time_entity: When current outage ends
+#     Format: ISO datetime (2025-11-13T14:30:00) or Unix timestamp
+#   
+#   next_outage_time_entity: When next outage starts
+#     Format: ISO datetime (2025-11-13T14:30:00) or Unix timestamp
 
-# 1. Outage Status Analysis
-#    - Automatically detects when an outage is active
-#    - Shows remaining time until power returns
-#    - Displays when the outage will end
-
-# 2. Battery Sufficiency Analysis
-#    - Compares battery discharge time vs outage duration
-#    - Shows if battery will last through the outage
-#    - Warns if battery might run out before outage ends
-#    - Color-coded alerts:
-#      * RED (Critical): Battery won't last
-#      * YELLOW (Warning): Battery sufficient but tight
-#      * GREEN (OK): Battery has sufficient reserve
-
-# 3. Charging Time Analysis
-#    - Calculates time needed to fully charge battery
-#    - Compares with time until next outage
-#    - Warns if there's not enough time to charge
-#    - Shows charging time needed in the "Next Outage" section
-
-# 4. Outage Schedule Display
-#    - Shows your outage schedule
-#    - Supports both text and JSON formats
-#    - Helps plan battery usage
-
-# 5. Smart Recommendations
-#    - "Start charging soon" if next outage is approaching
-#    - "Battery may run out" if current drain is too high
-#    - "Battery sufficient for outage" confirmation
+# DISPLAY SETTINGS (Optional):
+#   green: Battery % threshold for green color (default: 60)
+#   yellow: Battery % threshold for yellow color (default: 25)
+#   precision: Decimal places for percentage (default: 0)
+#   segments: Number of battery segments (default: 5)
+#   gap: Gap between segments in pixels (default: 2)
+#   palette: 'threshold' (red/yellow/green) or 'gradient' (default: threshold)
+#   show_state: Show percentage text on battery (default: true)
 
 ---
 
-# Visual Indicators:
+# ============================================
+# NEW in v0.3.0: Multi-Battery Features
+# ============================================
 
-# Analysis Messages (top of card):
-#   ⚠️ Critical (Red, pulsing): Immediate action needed
-#   ⚠️ Warning (Yellow): Attention required
-#   ⏰ Info (Blue): Informational notice
-#   ✅ OK (Green): All good
+# 1. Vertical Battery Layout
+#    - Batteries now fill bottom-to-top (like real batteries)
+#    - Energy flow moves downward to status circle
+#    - Each battery shows its name at the top
 
-# Outage Active Box (red border):
-#   🔌 Outage Active
-#   Shows: End time, Remaining time
+# 2. Dynamic Layout
+#    - 1 battery: Centered
+#    - 2 batteries: Left and right
+#    - 3+ batteries: Distributed grid
 
-# Next Outage Box (blue border):
-#   📅 Next Outage
-#   Shows: Start time, Time until start, Charge time needed
+# 3. Individual Monitoring
+#    - Each battery shows its own percentage, time, and power
+#    - Independent status indicators (charging/discharging/idle)
+#    - Separate energy flow animations
 
-# Schedule Box (gray border):
-#   📋 Schedule
-#   Shows: Your outage schedule text/data
+# 4. Selected Battery Analysis
+#    - Choose which battery to use for outage calculations
+#    - Outage warnings reference the selected battery by name
+#    - Example: "⚠️ Delta 2 may run out before outage ends"
 
+# 5. Compact Display
+#    - Time and power info below each battery
+#    - Unified outage section at the bottom
+#    - Auto-adjusting card height
+
+---
+
+# ============================================
+# Integration with HA Yasno Outages
+# ============================================
+
+# The HA Yasno Outages integration provides Ukrainian electricity 
+# outage schedules from DTEK/Yasno. It's perfect for this card!
+
+# Installation:
+# 1. Open HACS → Integrations
+# 2. Search for "Yasno Outages"
+# 3. Install and restart Home Assistant
+# 4. Add integration and select your city and group
+
+# Entity Mapping:
+# - outage_status_entity: sensor.yasno_{city}_dtek_{group}_electricity
+# - outage_end_time_entity: sensor.yasno_{city}_dtek_{group}_next_connectivity
+# - next_outage_time_entity: sensor.yasno_{city}_dtek_{group}_next_planned_outage
+
+# Example for Kyiv, Group 2.2:
+#   outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
+#   outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
+#   next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
+
+# GitHub: https://github.com/denysdovhan/ha-yasno-outages
+
+---
+
+# ============================================
+# Smart Outage Analysis Features
+# ============================================
+
+# 1. Battery Sufficiency Check (During Outage)
+#    Compares battery discharge time vs remaining outage time
+#    - ✅ "Battery sufficient for outage" (Green)
+#    - ⚠️ "Battery may run out before outage ends!" (Red, pulsing)
+
+# 2. Charging Time Analysis (Before Outage)
+#    Uses charge_remaining_time_entity to see if you can charge in time
+#    - ✅ "Plenty of time to charge before outage" (Green)
+#    - ⏰ "Start charging soon - limited time margin" (Blue)
+#    - ⚠️ "Not enough time to fully charge!" (Yellow)
+
+# 3. Visual Indicators
+#    - Red pulsing border: Critical warning
+#    - Yellow background: Warning
+#    - Blue background: Informational
+#    - Green background: All good
+
+# 4. Compact Display
+#    Active Outage:
+#      🔌 Outage Active
+#      Ends: Today 14:30 • Remaining: 2h 15min
+#    
+#    Next Outage:
+#      📅 Next Outage
+#      Today 18:00 • In: 3h 45min
+
+---
+
+# ============================================
+# Breaking Changes from v0.2.x
+# ============================================
+
+# ⚠️ Configuration structure has changed!
+# Old format (v0.2.x):
+#   entity: sensor.battery
+#   name: My Battery
+#   remaining_time_entity: sensor.time
+#
+# New format (v0.3.0+):
+#   batteries:
+#     - entity: sensor.battery
+#       name: My Battery
+#       remaining_time_entity: sensor.time
+
+# Migration is simple: wrap your battery config in a batteries array!
+
+# Removed options:
+#   - charge_rate_watts (no longer needed)
+#   - battery_capacity_wh (no longer needed)
+#   - outage_schedule_entity (removed in v0.2.1)
+
+# The card now uses your charge_remaining_time_entity directly,
+# making it more accurate and eliminating manual calculations!
+
+---
+
+# ============================================
+# Tips for Best Results
+# ============================================
+
+# 1. Battery Names
+#    Use short, descriptive names like "Delta 2" or "River"
+#    They display at the top of each battery
+
+# 2. Time Sensors
+#    Make sure your time sensors report in MINUTES
+#    The card will format them automatically (e.g., "2h 15min")
+
+# 3. Power Sensors
+#    AC output power should be in WATTS
+#    The card auto-formats (e.g., "1.2kW" for 1200W)
+
+# 4. Selected Battery
+#    Choose the battery with the most critical role for outage analysis
+#    Usually your largest or primary battery
+
+# 5. Outage Entities
+#    Test that your outage sensors update correctly
+#    Check the Yasno integration if using DTEK schedules
+
+# 6. Layout
+#    The card height adjusts automatically
+#    Works great on mobile, tablet, and desktop
+#    Consider using 2 columns for 4+ batteries
+
+---
+
+# ============================================
+# Troubleshooting
+# ============================================
+
+# Card shows "You must specify at least one battery"
+#   → Make sure you have a `batteries` array with at least one battery object
+
+# Battery shows "unavailable"
+#   → Check that the entity exists and reports 0-100%
+
+# No energy flow animation
+#   → Verify ac_out_power_entity exists and reports > 0 watts
+
+# No time display
+#   → Check that remaining_time_entity or charge_remaining_time_entity
+#     exists and reports a number (minutes)
+
+# Outage analysis not working
+#   → Verify all three outage entities are configured and reporting data
+#   → Check that selected_battery index is valid (0 for first battery)
+
+# Batteries not displaying correctly
+#   → Clear browser cache and hard reload (Ctrl+Shift+R or Cmd+Shift+R)
+#   → Check browser console for errors (F12)
+
+# Multi-battery layout looks wrong
+#   → The layout auto-adjusts: 1 centered, 2 left/right, 3+ grid
+#   → Try refreshing the page or reloading the card
+
+---
+
+# For more information and updates:
+# GitHub: https://github.com/lemannrus/ecoflow-battery-card
+# Issues: https://github.com/lemannrus/ecoflow-battery-card/issues

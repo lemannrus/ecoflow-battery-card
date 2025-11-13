@@ -1,26 +1,37 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.2.1
+ * Version: 0.3.0
  *
  * Config example:
  * type: custom:eco-battery-card
- * entity: sensor.ecoflow_battery
- * name: EcoFlow Delta 2
- * green: 60        # green threshold (for palette: 'threshold')
- * yellow: 25       # yellow threshold (for palette: 'threshold')
- * palette: gradient  # 'threshold' | 'gradient'
- * segments: 5      # number of battery segments
- * gap: 3           # gap between segments in px
+ * batteries:
+ *   - entity: sensor.delta_2_main_battery_level
+ *     name: Delta 2
+ *     remaining_time_entity: sensor.delta_2_discharge_remaining_time
+ *     charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+ *     ac_out_power_entity: sensor.delta_2_ac_out_power
+ *   - entity: sensor.river_2_battery_level
+ *     name: River 2
+ *     remaining_time_entity: sensor.river_2_discharge_remaining_time
+ *     charge_remaining_time_entity: sensor.river_2_charge_remaining_time
+ *     ac_out_power_entity: sensor.river_2_ac_out_power
+ * 
+ * selected_battery: 0  # Index of battery for outage analysis (0 = first battery)
+ * 
+ * # Outage settings (shared across all batteries)
+ * outage_status_entity: sensor.outage_status
+ * outage_end_time_entity: sensor.outage_end_time
+ * next_outage_time_entity: sensor.next_outage_time
+ * 
+ * # Display settings (applied to all batteries)
+ * green: 60
+ * yellow: 25
+ * palette: gradient
+ * segments: 5
+ * gap: 3
  * precision: 0
  * show_state: true
- * invert: false
- * remaining_time_entity: sensor.delta_2_discharge_remaining_time  # optional
- * charge_remaining_time_entity: sensor.delta_2_charge_remaining_time  # optional
- * ac_out_power_entity: sensor.delta_2_ac_out_power  # optional
- * outage_status_entity: sensor.outage_status  # optional (binary: on/off or active/inactive)
- * outage_end_time_entity: sensor.outage_end_time  # optional (datetime or timestamp)
- * next_outage_time_entity: sensor.next_outage_time  # optional (datetime or timestamp)
  */
 
 /* Lit helpers from HA (pattern used by many cards) */
@@ -41,15 +52,27 @@ class EcoBatteryCard extends LitBase {
   }
 
   setConfig(config) {
-    if (!config || !config.entity) {
-      throw new Error('You must specify an entity with a battery percentage (0..100).');
+    if (!config || !config.batteries || !Array.isArray(config.batteries) || config.batteries.length === 0) {
+      throw new Error('You must specify at least one battery in the "batteries" array.');
     }
+
+    // Validate each battery has required entity
+    config.batteries.forEach((battery, index) => {
+      if (!battery.entity) {
+        throw new Error(`Battery at index ${index} is missing required "entity" field.`);
+      }
+    });
+
     this._config = {
-      name: config.name || '',
-      entity: config.entity,
-      remaining_time_entity: config.remaining_time_entity || null,
-      charge_remaining_time_entity: config.charge_remaining_time_entity || null,
-      ac_out_power_entity: config.ac_out_power_entity || null,
+      batteries: config.batteries.map(battery => ({
+        entity: battery.entity,
+        name: battery.name || '',
+        remaining_time_entity: battery.remaining_time_entity || null,
+        charge_remaining_time_entity: battery.charge_remaining_time_entity || null,
+        ac_out_power_entity: battery.ac_out_power_entity || null,
+        invert: !!battery.invert,
+      })),
+      selected_battery: typeof config.selected_battery === 'number' ? Math.max(0, Math.min(config.selected_battery, config.batteries.length - 1)) : 0,
       outage_status_entity: config.outage_status_entity || null,
       outage_end_time_entity: config.outage_end_time_entity || null,
       next_outage_time_entity: config.next_outage_time_entity || null,
@@ -57,23 +80,28 @@ class EcoBatteryCard extends LitBase {
       yellow: typeof config.yellow === 'number' ? config.yellow : 25,
       show_state: config.show_state !== false,
       precision: typeof config.precision === 'number' ? config.precision : 0,
-      invert: !!config.invert,
       palette: ['threshold', 'gradient'].includes(config.palette) ? config.palette : 'threshold',
       segments: Number.isFinite(config.segments) ? Math.max(1, Math.floor(config.segments)) : 5,
-      gap: Number.isFinite(config.gap) ? Math.max(0, config.gap) : 3,
+      gap: Number.isFinite(config.gap) ? Math.max(0, config.gap) : 2,
     };
   }
 
-  getCardSize() { return 3; }
+  getCardSize() {
+    const numBatteries = this._config?.batteries?.length || 1;
+    return numBatteries === 1 ? 3 : Math.ceil(numBatteries / 2) + 2;
+  }
 
-  _pct() {
-    const st = this.hass?.states?.[this._config.entity];
+  _pct(batteryIndex) {
+    const battery = this._config.batteries[batteryIndex];
+    if (!battery) return 0;
+
+    const st = this.hass?.states?.[battery.entity];
     if (!st) return 0;
     let n = Number(st.state);
     if (Number.isNaN(n)) {
       n = Number(st.attributes?.battery ?? st.attributes?.level ?? 0);
     }
-    if (this._config.invert) n = 100 - n;
+    if (battery.invert) n = 100 - n;
     if (!Number.isFinite(n)) n = 0;
     return Math.max(0, Math.min(100, n));
   }
@@ -92,45 +120,35 @@ class EcoBatteryCard extends LitBase {
     return 'var(--success-color, #43a047)';
   }
 
-  _remainingTime() {
-    // Debug logging
-    if (this._config.remaining_time_entity) {
-      const dischargeSt = this.hass?.states?.[this._config.remaining_time_entity];
-      console.log('[ECO-BATTERY-CARD] Discharge sensor:', this._config.remaining_time_entity, 'State:', dischargeSt?.state);
-    }
-    if (this._config.charge_remaining_time_entity) {
-      const chargeSt = this.hass?.states?.[this._config.charge_remaining_time_entity];
-      console.log('[ECO-BATTERY-CARD] Charge sensor:', this._config.charge_remaining_time_entity, 'State:', chargeSt?.state);
-    }
+  _remainingTime(batteryIndex) {
+    const battery = this._config.batteries[batteryIndex];
+    if (!battery) return null;
 
     // Try discharge time first
-    if (this._config.remaining_time_entity) {
-      const dischargeSt = this.hass?.states?.[this._config.remaining_time_entity];
+    if (battery.remaining_time_entity) {
+      const dischargeSt = this.hass?.states?.[battery.remaining_time_entity];
       if (dischargeSt && dischargeSt.state && dischargeSt.state !== 'unknown' && dischargeSt.state !== 'unavailable') {
         const dischargeMinutes = Number(dischargeSt.state);
 
         // If discharge time is valid and > 0, use it
         if (Number.isFinite(dischargeMinutes) && dischargeMinutes > 0) {
-          console.log('[ECO-BATTERY-CARD] Showing discharge:', dischargeMinutes, 'minutes');
           return { time: this._formatMinutes(dischargeMinutes), type: 'discharge' };
         }
       }
     }
 
     // If discharge is 0 or unavailable, try charge time
-    if (this._config.charge_remaining_time_entity) {
-      const chargeSt = this.hass?.states?.[this._config.charge_remaining_time_entity];
+    if (battery.charge_remaining_time_entity) {
+      const chargeSt = this.hass?.states?.[battery.charge_remaining_time_entity];
       if (chargeSt && chargeSt.state && chargeSt.state !== 'unknown' && chargeSt.state !== 'unavailable') {
         const chargeMinutes = Number(chargeSt.state);
 
         if (Number.isFinite(chargeMinutes) && chargeMinutes > 0) {
-          console.log('[ECO-BATTERY-CARD] Showing charge:', chargeMinutes, 'minutes');
           return { time: this._formatMinutes(chargeMinutes), type: 'charge' };
         }
       }
     }
 
-    console.log('[ECO-BATTERY-CARD] No valid remaining time found');
     return null;
   }
 
@@ -147,9 +165,11 @@ class EcoBatteryCard extends LitBase {
     }
   }
 
-  _acOutPower() {
-    if (!this._config.ac_out_power_entity) return null;
-    const st = this.hass?.states?.[this._config.ac_out_power_entity];
+  _acOutPower(batteryIndex) {
+    const battery = this._config.batteries[batteryIndex];
+    if (!battery || !battery.ac_out_power_entity) return null;
+
+    const st = this.hass?.states?.[battery.ac_out_power_entity];
     if (!st) return null;
     const value = st.state;
     if (!value || value === 'unknown' || value === 'unavailable') return null;
@@ -246,10 +266,14 @@ class EcoBatteryCard extends LitBase {
    * }
    */
   _analyzeOutageSituation() {
+    const selectedIdx = this._config.selected_battery;
+    const battery = this._config.batteries[selectedIdx];
+    if (!battery) return { sufficientForOutage: null, canChargeBeforeNext: null, warningLevel: 'ok', message: '' };
+
     const outageStatus = this._getOutageStatus();
     const nextOutage = this._getNextOutage();
-    const remainingTime = this._remainingTime();
-    const currentPct = this._pct();
+    const remainingTime = this._remainingTime(selectedIdx);
+    const currentPct = this._pct(selectedIdx);
 
     let sufficientForOutage = null;
     let canChargeBeforeNext = null;
@@ -265,24 +289,24 @@ class EcoBatteryCard extends LitBase {
         if (!sufficientForOutage) {
           warningLevel = 'critical';
           const shortfall = outageStatus.minutesRemaining - dischargeMinutes;
-          message = `⚠️ Battery may run out ${this._formatMinutes(shortfall)} before outage ends!`;
+          message = `⚠️ ${battery.name || 'Battery'} may run out ${this._formatMinutes(shortfall)} before outage ends!`;
         } else {
           const excess = dischargeMinutes - outageStatus.minutesRemaining;
           if (excess < 30) {
             warningLevel = 'warning';
-            message = `⚡ Battery sufficient, but only ${this._formatMinutes(excess)} spare time`;
+            message = `⚡ ${battery.name || 'Battery'} sufficient, but only ${this._formatMinutes(excess)} spare time`;
           } else {
             warningLevel = 'ok';
-            message = `✅ Battery sufficient for outage (${this._formatMinutes(excess)} spare)`;
+            message = `✅ ${battery.name || 'Battery'} sufficient for outage (${this._formatMinutes(excess)} spare)`;
           }
         }
       }
     }
 
     // Analysis 2: Next outage - can we charge enough?
-    if (!outageStatus.isActive && nextOutage.minutesUntil !== null && this._config.charge_remaining_time_entity) {
+    if (!outageStatus.isActive && nextOutage.minutesUntil !== null && battery.charge_remaining_time_entity) {
       // Get actual charge time from sensor
-      const chargeSt = this.hass?.states?.[this._config.charge_remaining_time_entity];
+      const chargeSt = this.hass?.states?.[battery.charge_remaining_time_entity];
       if (chargeSt && chargeSt.state && chargeSt.state !== 'unknown' && chargeSt.state !== 'unavailable') {
         const chargeTimeNeeded = Number(chargeSt.state);
 
@@ -292,12 +316,12 @@ class EcoBatteryCard extends LitBase {
           if (currentPct < 80) {
             if (!canChargeBeforeNext) {
               warningLevel = warningLevel === 'critical' ? 'critical' : 'warning';
-              message = message || `⚠️ Not enough time to fully charge before next outage!`;
+              message = message || `⚠️ Not enough time to fully charge ${battery.name || 'battery'} before next outage!`;
             } else {
               const timeMargin = nextOutage.minutesUntil - chargeTimeNeeded;
               if (timeMargin < 60 && warningLevel === 'ok') {
                 warningLevel = 'info';
-                message = message || `⏰ Start charging soon - ${this._formatMinutes(timeMargin)} margin`;
+                message = message || `⏰ Start charging ${battery.name || 'battery'} soon - ${this._formatMinutes(timeMargin)} margin`;
               }
             }
           }
@@ -341,80 +365,43 @@ class EcoBatteryCard extends LitBase {
     return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
-  _renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) {
-    const mainG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    mainG.setAttribute('class', 'energy-flow');
-
-    const startX = bodyX + bodyW;
-    const endX = W - PAD - 15;
-    const distance = endX - startX;
-    const y = bodyY + bodyH / 2;
-
-    // Create particles distributed along the entire path
-    // They stay in place, only their opacity animates in a wave pattern
-    const numParticles = 12;
-
-    for (let i = 0; i < numParticles; i++) {
-      // Calculate position along the path (0 to 1)
-      const progress = i / (numParticles - 1);
-      const x = startX + (distance * progress);
-
-      // Create circle at its fixed position
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('class', `flow-particle-static particle-${i + 1}`);
-      circle.setAttribute('r', '2.5');
-      circle.setAttribute('cx', String(x));
-      circle.setAttribute('cy', String(y));
-      circle.setAttribute('fill', color);
-
-      // Set animation delay based on position
-      circle.style.animationDelay = `${(i * 0.15)}s`;
-
-      mainG.appendChild(circle);
-    }
-
-    return mainG;
-  }
-
-  _renderStatusIndicator(W, PAD, bodyY, bodyH, color, isConnected, statusIcon, isCharging, isDischarging) {
-    const x = W - PAD - 15;
-    const y = bodyY + bodyH / 2;
+  /**
+   * Render status indicator circle below battery (for vertical layout)
+   */
+  _renderVerticalStatusIndicator(centerX, centerY, color, isConnected, statusIcon, isCharging, isDischarging) {
     const fillColor = isConnected ? 'var(--success-color, #43a047)' : color;
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'status-indicator');
-    g.setAttribute('transform', `translate(${x}, ${y})`);
+    g.setAttribute('class', 'status-indicator-vertical');
+    g.setAttribute('transform', `translate(${centerX}, ${centerY})`);
 
-    // Outer ring with CSS animation class
+    // Outer ring
     const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     ring.setAttribute('class', 'status-ring-anim');
-    ring.setAttribute('r', '18');
+    ring.setAttribute('r', '16');
     ring.setAttribute('fill', 'none');
     ring.setAttribute('stroke', fillColor);
-    ring.setAttribute('stroke-width', '2.5');
-
+    ring.setAttribute('stroke-width', '2');
     g.appendChild(ring);
 
-    // Inner circle with CSS animation class
+    // Inner circle
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('class', 'status-circle-anim');
-    circle.setAttribute('r', '15');
+    ring.setAttribute('r', '13');
     circle.setAttribute('fill', fillColor);
-
     g.appendChild(circle);
 
-    // Icon text with appropriate animation class
+    // Icon text
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', '0');
     text.setAttribute('y', '0');
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'central');
-    text.setAttribute('font-size', '18');
+    text.setAttribute('font-size', '16');
     text.setAttribute('fill', 'white');
     text.setAttribute('font-weight', 'bold');
     text.textContent = statusIcon;
 
-    // Add animation class based on state
     if (isCharging) {
       text.setAttribute('class', 'status-icon-charging');
     } else if (isDischarging) {
@@ -428,63 +415,47 @@ class EcoBatteryCard extends LitBase {
     return g;
   }
 
-  render() {
-    if (!this._config) return html``;
-    const pct = this._pct();
+  /**
+   * Render a single vertical battery with all components
+   * Returns HTML template for one battery column
+   */
+  _renderSingleBattery(batteryIndex) {
+    const pct = this._pct(batteryIndex);
     const color = this._color(pct);
-    const remainingTime = this._remainingTime();
-    const acOutPower = this._acOutPower();
-    const outageStatus = this._getOutageStatus();
-    const nextOutage = this._getNextOutage();
-    const analysis = this._analyzeOutageSituation();
+    const battery = this._config.batteries[batteryIndex];
+    const remainingTime = this._remainingTime(batteryIndex);
+    const acOutPower = this._acOutPower(batteryIndex);
 
-    // SVG geometry
-    const W = 220; // total width
-    const H = 130; // total height
-    const PAD = 8; // compact outer padding
-    const bodyX = PAD;
-    const bodyY = PAD;
-    const bodyW = 100;
-    const bodyH = 60;
+    // Vertical battery dimensions
+    const batteryW = 50;
+    const batteryH = 100;
+    const capW = 20;
+    const capH = 8;
+    const svgPadding = 5;
 
-    const capW = 12;
-    const capH = 28;
-    const capX = bodyX + bodyW + 4;
-    const capY = bodyY + (bodyH - capH) / 2;
+    // Center everything in the SVG's own coordinate system
+    const centerX = batteryW / 2 + svgPadding;
+    const bodyX = svgPadding;
+    const bodyY = 40; // Leave space for name above
+    const capX = centerX - capW / 2;
+    const capY = bodyY - capH - 2;
 
-    const innerX = bodyX + 6;
-    const innerY = bodyY + 6;
-    const innerW = bodyW - 12;
-    const innerH = bodyH - 12;
+    // Inner dimensions
+    const innerX = bodyX + 4;
+    const innerY = bodyY + 4;
+    const innerW = batteryW - 8;
+    const innerH = batteryH - 8;
 
-    const label = this._config.name || this._friendlyName();
-    const stateText = `${pct.toFixed(this._config.precision)}%`;
-
-    // Determine charging/discharging state
-    const isCharging = remainingTime?.type === 'charge';
-    const isDischarging = remainingTime?.type === 'discharge';
-    const isConnected = !isCharging && !isDischarging && (this._config.remaining_time_entity || this._config.charge_remaining_time_entity);
-    const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : (isConnected ? '⚡' : ''));
-
-    // Debug logging for status
-    console.log('[ECO-BATTERY-CARD] Status:', {
-      remainingTime: remainingTime,
-      isCharging: isCharging,
-      isDischarging: isDischarging,
-      isConnected: isConnected,
-      statusIcon: statusIcon,
-      hasEntities: !!(this._config.remaining_time_entity || this._config.charge_remaining_time_entity)
-    });
-
-    // Battery segments (vertical columns), fill left-to-right
+    // Calculate segments (horizontal rows, fill bottom-to-top)
     const numSegments = this._config.segments;
     const gap = this._config.gap;
-    const segmentW = (innerW - (numSegments - 1) * gap) / numSegments;
+    const segmentH = (innerH - (numSegments - 1) * gap) / numSegments;
 
-    const progressCols = (pct / 100) * numSegments; // how many columns correspond to percentage
-    const fullCols = Math.floor(progressCols);
-    const partialFrac = progressCols - fullCols; // 0..1 for the partially filled column
+    const progressRows = (pct / 100) * numSegments;
+    const fullRows = Math.floor(progressRows);
+    const partialFrac = progressRows - fullRows;
 
+    // Create segment rectangles (bottom to top)
     const segments = [];
     const createRect = (attrs) => {
       const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -493,67 +464,106 @@ class EcoBatteryCard extends LitBase {
       }
       return r;
     };
+
     for (let i = 0; i < numSegments; i++) {
-      const x = innerX + i * (segmentW + gap);
-      // column background
+      const yPos = innerY + innerH - (i + 1) * (segmentH + gap) + gap;
+      // Background
       segments.push(createRect({
-        x, y: innerY, width: segmentW, height: innerH, rx: 3, ry: 3,
-        fill: '#333333', class: 'segment', stroke: 'rgba(255,255,255,0.2)', 'stroke-width': 1,
+        x: innerX, y: yPos, width: innerW, height: segmentH, rx: 2, ry: 2,
+        fill: '#333333', class: 'segment', stroke: 'rgba(255,255,255,0.15)', 'stroke-width': 0.5,
       }));
-      // fill left-to-right
-      let w = 0;
-      if (i < fullCols) {
-        w = segmentW;
-      } else if (i === fullCols && partialFrac > 0) {
-        w = Math.max(0, Math.min(segmentW, segmentW * partialFrac));
+
+      // Fill (bottom to top)
+      let h = 0;
+      if (i < fullRows) {
+        h = segmentH;
+      } else if (i === fullRows && partialFrac > 0) {
+        h = Math.max(0, Math.min(segmentH, segmentH * partialFrac));
       }
-      if (w > 0) {
+      if (h > 0) {
+        const fillY = yPos + (segmentH - h);
         segments.push(createRect({
-          x, y: innerY, width: w, height: innerH, rx: 3, ry: 3,
+          x: innerX, y: fillY, width: innerW, height: h, rx: 2, ry: 2,
           fill: color, class: 'segment',
         }));
       }
     }
 
+    // Status determination
+    const isCharging = remainingTime?.type === 'charge';
+    const isDischarging = remainingTime?.type === 'discharge';
+    const isConnected = !isCharging && !isDischarging && (battery.remaining_time_entity || battery.charge_remaining_time_entity);
+    const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : (isConnected ? '⚡' : ''));
+
+    // Status circle position (below battery)
+    const statusY = bodyY + batteryH + 30;
+
+    // Total SVG dimensions
+    const svgWidth = batteryW + (svgPadding * 2);
+    const svgHeight = statusY + 30;
+
     return html`
-      <ha-card .header=${label} class="eco-card">
-        <div class="wrap">
-          <svg viewBox="0 0 ${W} ${H}" part="svg">
-            <!-- Energy Flow Animation (rendered first, behind everything) -->
-            ${acOutPower && acOutPower > 0 ? this._renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) : ''}
-            
-            <!-- Battery body -->
-            <rect x="${bodyX}" y="${bodyY}" rx="10" ry="10" width="${bodyW}" height="${bodyH}" class="case" />
-            <!-- Battery cap -->
-            <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}" class="cap" />
-
-            <!-- Inner area -->
-            <rect x="${innerX}" y="${innerY}" rx="3" ry="3" width="${innerW}" height="${innerH}" class="inner-bg" />
-
-            <!-- Segments -->
-            ${segments}
-
-            <!-- Percentage centered -->
-            <text x="${bodyX + bodyW / 2}" y="${bodyY + bodyH / 2}"
-                  text-anchor="middle" dominant-baseline="central" class="pct" fill="white">${stateText}</text>
-            
-            <!-- Status Indicator Circle (Charging/Discharging/Connected) -->
-            ${(isCharging || isDischarging || isConnected) ? this._renderStatusIndicator(W, PAD, bodyY, bodyH, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
-          </svg>
-          ${remainingTime ? html`
-            <div class="remaining-time">
-              <span class="time-icon">${remainingTime.type === 'charge' ? '⚡' : '⏱'}</span>
-              <span class="time-value">${remainingTime.time}</span>
-            </div>
-          ` : ''}
-          ${acOutPower && acOutPower > 0 ? html`
-            <div class="power-output">
-              <span class="power-icon">⚡</span>
-              <span class="power-label">Out:</span>
-              <span class="power-value">${this._formatPower(acOutPower)}</span>
-            </div>
-          ` : ''}
+      <div class="battery-column">
+        <svg class="battery-svg" viewBox="0 0 ${svgWidth} ${svgHeight}">
+          <!-- Battery name -->
+          <text x="${centerX}" y="20" text-anchor="middle" class="battery-name" fill="var(--primary-text-color)">${battery.name || `Battery ${batteryIndex + 1}`}</text>
           
+          <!-- Battery cap (top) -->
+          <rect x="${capX}" y="${capY}" rx="3" ry="3" width="${capW}" height="${capH}" class="cap-vertical" />
+          
+          <!-- Battery body -->
+          <rect x="${bodyX}" y="${bodyY}" rx="6" ry="6" width="${batteryW}" height="${batteryH}" class="case-vertical" />
+          
+          <!-- Inner area -->
+          <rect x="${innerX}" y="${innerY}" rx="2" ry="2" width="${innerW}" height="${innerH}" class="inner-bg" />
+          
+          <!-- Segments -->
+          ${segments}
+          
+          <!-- Percentage text -->
+          <text x="${centerX}" y="${bodyY + batteryH / 2}" text-anchor="middle" dominant-baseline="central" class="pct-vertical" fill="white">${pct.toFixed(this._config.precision)}%</text>
+          
+          <!-- Status indicator -->
+          ${statusIcon ? this._renderVerticalStatusIndicator(centerX, statusY, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
+        </svg>
+        
+        <!-- Time and power info -->
+        ${remainingTime ? html`
+          <div class="battery-time">
+            <span class="time-icon-small">${remainingTime.type === 'charge' ? '⚡' : '⏱'}</span>
+            <span class="time-value-small">${remainingTime.time}</span>
+          </div>
+        ` : ''}
+        ${acOutPower && acOutPower > 0 ? html`
+          <div class="battery-power">
+            <span class="power-value-small">${this._formatPower(acOutPower)}</span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  render() {
+    if (!this._config) return html``;
+
+    const numBatteries = this._config.batteries.length;
+    const outageStatus = this._getOutageStatus();
+    const nextOutage = this._getNextOutage();
+    const analysis = this._analyzeOutageSituation();
+
+    // Render all batteries
+    const batteryElements = this._config.batteries.map((_, idx) =>
+      this._renderSingleBattery(idx)
+    );
+
+    return html`
+      <ha-card class="eco-card-vertical">
+        <div class="batteries-container">
+          ${batteryElements}
+        </div>
+        
+        <!-- Outage information (for selected battery) -->
+        <div class="outage-info-container">
           <!-- Outage Analysis Warning/Info -->
           ${analysis.message ? html`
             <div class="outage-analysis ${analysis.warningLevel}">
@@ -598,13 +608,90 @@ class EcoBatteryCard extends LitBase {
     `;
   }
 
-  _friendlyName() {
-    const st = this.hass?.states?.[this._config.entity];
-    return st?.attributes?.friendly_name || this._config.entity;
-  }
-
   static get styles() {
     return css`
+      /* Vertical battery layout */
+      ha-card.eco-card-vertical { padding: 12px; }
+      .batteries-container {
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: flex;
+        -webkit-flex-wrap: wrap;
+        flex-wrap: wrap;
+        -webkit-box-pack: center;
+        -webkit-justify-content: center;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 10px;
+      }
+      .battery-column {
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: flex;
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+        -webkit-flex-direction: column;
+        flex-direction: column;
+        -webkit-box-align: center;
+        -webkit-align-items: center;
+        align-items: center;
+        gap: 6px;
+      }
+      .battery-svg {
+        width: 60px;
+        height: auto;
+      }
+      .battery-name {
+        font-size: 12px;
+        font-weight: 600;
+        fill: var(--primary-text-color);
+      }
+      .case-vertical {
+        fill: none;
+        stroke: var(--primary-text-color);
+        stroke-width: 2.5;
+        opacity: 0.85;
+      }
+      .cap-vertical {
+        fill: var(--primary-text-color);
+        opacity: 0.8;
+      }
+      .pct-vertical {
+        fill: var(--primary-text-color);
+        font-weight: 700;
+        font-size: 16px;
+        text-shadow: 0 0 3px rgba(0,0,0,0.8);
+        filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
+      }
+      .battery-time, .battery-power {
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: flex;
+        -webkit-box-align: center;
+        -webkit-align-items: center;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--secondary-text-color);
+      }
+      .time-icon-small {
+        font-size: 12px;
+        opacity: 0.8;
+      }
+      .time-value-small {
+        font-weight: 600;
+        color: var(--primary-text-color);
+      }
+      .power-value-small {
+        font-weight: 700;
+        color: var(--success-color, #43a047);
+        font-size: 12px;
+      }
+      .outage-info-container {
+        margin-top: 8px;
+      }
+      
+      /* Old horizontal layout styles (keep for compatibility) */
       .wrap { display: grid; place-items: center; padding: 0; }
       ha-card.eco-card { padding: 2px 8px 2px; }
       svg { width: 100%; max-width: 300px; height: auto; }
@@ -660,7 +747,7 @@ class EcoBatteryCard extends LitBase {
         color: white;
         filter: brightness(0) invert(1);
         opacity: 0.9;
-        animation: pulse 2s ease-in-out infinite;
+        animation: pulse 1.5s ease-in-out infinite;
       }
       .power-label {
         font-size: 18px;
@@ -677,33 +764,30 @@ class EcoBatteryCard extends LitBase {
       }
       .flow-particle-static {
         filter: drop-shadow(0 0 3px currentColor);
-        animation: flowWave 1.8s ease-in-out infinite;
+        animation: flowWave 1.5s ease-in-out infinite;
       }
       .status-indicator {
         filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
       }
       .status-ring-anim {
         opacity: 0.6;
-        animation: ringPulse 2s ease-in-out infinite;
+        animation: ringPulse 1.5s ease-in-out infinite;
       }
       .status-circle-anim {
         opacity: 0.9;
-        animation: circlePulse 2s ease-in-out infinite;
+        animation: circlePulse 1.5s ease-in-out infinite;
       }
       .status-icon-charging {
-        animation: bounceUp 1.5s ease-in-out infinite;
         filter: brightness(0) invert(1);
         user-select: none;
         pointer-events: none;
       }
       .status-icon-discharging {
-        animation: bounceDown 1.5s ease-in-out infinite;
         filter: brightness(0) invert(1);
         user-select: none;
         pointer-events: none;
       }
       .status-icon-connected {
-        animation: scaleIcon 1.5s ease-in-out infinite;
         filter: brightness(0) invert(1);
         user-select: none;
         pointer-events: none;
@@ -874,11 +958,18 @@ class EcoBatteryCard extends LitBase {
     `;
   }
 
-  static getStubConfig() { return { entity: 'sensor.battery_level', name: 'EcoFlow' }; }
+  static getStubConfig() {
+    return {
+      batteries: [
+        { entity: 'sensor.battery_level', name: 'EcoFlow Delta 2' }
+      ],
+      selected_battery: 0
+    };
+  }
 }
 
 if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.2.1 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.3.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');

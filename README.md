@@ -24,23 +24,36 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 ## ✨ Features
 
+### Multi-Battery Support (NEW in v0.3.0) 🔋🔋
+- **Multiple Batteries Display**: Show all your EcoFlow devices in one card
+  - Dynamic vertical layout that automatically adjusts to the number of batteries
+  - Single battery: centered display
+  - Two batteries: left and right layout
+  - Three or more: distributed grid layout
+- **Individual Battery Monitoring**: Each battery shows its own:
+  - Name and percentage
+  - Remaining time (discharge or charge)
+  - Power output
+  - Status indicator (charging/discharging/idle)
+- **Selected Battery for Outage Analysis**: Choose which battery to use for outage calculations
+- **Unified Outage Information**: One outage display for all batteries
+
 ### Battery Display
-- **Visual Battery Display**: SVG battery with segmented columns that fill left-to-right
+- **Vertical Battery Design**: SVG battery with segmented columns that fill bottom-to-top
 - **Color-Coded Status**: Green (good), yellow (warning), red (critical) battery levels
-- **Animated Status Indicator**: Pulsing circular badge on the right showing battery state
-  - ↑ Color-matched circle with up arrow when charging (bounces up)
-  - ↓ Color-matched circle with down arrow when discharging (bounces down)
-  - ⚡ Green circle with lightning bolt when connected to power but idle (scales/pulses)
+- **Animated Status Indicator**: Pulsing circular badge below each battery showing state
+  - ↑ Color-matched circle with up arrow when charging
+  - ↓ Color-matched circle with down arrow when discharging
+  - ⚡ Green circle with lightning bolt when connected to power but idle
   - Smooth pulsing ring animation
-  - Icons animate with motion (bounce or scale)
-- **Animated Energy Flow**: Beautiful animated particles flowing from battery to output when power is being used
+  - Icons animate with motion
 - **Real-Time Power Display**: Shows current AC output power with automatic W/kW formatting
-- **Smart Time Display**: Automatically shows discharge time (⏱) or charge time (⚡) with automatic formatting
+- **Smart Time Display**: Automatically shows discharge time (⏱) or charge time (⚡)
   - Discharge time displayed when battery is discharging
-  - Charge time displayed when battery is charging (discharge = 0)
+  - Charge time displayed when battery is charging
   - Automatically converts minutes to "Xh Ymin" format
 
-### Outage Management (NEW in v0.2.0) 🔌
+### Outage Management 🔌
 - **Smart Outage Analysis**: Intelligent monitoring and recommendations for power outages
   - Compares battery remaining time vs outage duration
   - Calculates if you can fully charge before next outage
@@ -105,27 +118,27 @@ resources:
 
 ## 🔧 Configuration
 
-### Basic Configuration
+### Basic Configuration (Single Battery)
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.ecoflow_battery_level
-name: "EcoFlow Delta 2"
+batteries:
+  - entity: sensor.ecoflow_battery_level
+    name: "EcoFlow Delta 2"
 ```
 
-### Advanced Configuration (Real-World Example)
+### Advanced Configuration (Single Battery with Outage Monitoring)
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.delta_2_main_battery_level
-name: EcoFlow Delta 2
+batteries:
+  - entity: sensor.delta_2_main_battery_level
+    name: Delta 2
+    remaining_time_entity: sensor.delta_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+    ac_out_power_entity: sensor.delta_2_ac_out_power
 
-# Battery time & power entities
-remaining_time_entity: sensor.delta_2_discharge_remaining_time
-charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
-ac_out_power_entity: sensor.delta_2_ac_out_power
-
-# Outage integration entities (NEW in v0.2.0)
+# Outage integration entities
 outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
 outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
 next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
@@ -135,40 +148,76 @@ green: 60
 yellow: 25
 show_state: true
 precision: 0
-invert: false
 segments: 5
-gap: 3
+gap: 2
 palette: gradient
 ```
 
-**Note:** This example uses the [**HA Yasno Outages**](https://github.com/denysdovhan/ha-yasno-outages) integration for Ukrainian electricity outage information. Entity names will vary based on your city and DTEK group. Install it via HACS for automatic outage schedule tracking.
+### Multi-Battery Configuration (NEW in v0.3.0) 🔋🔋
+
+```yaml
+type: custom:eco-battery-card
+batteries:
+  - entity: sensor.delta_2_main_battery_level
+    name: Delta 2
+    remaining_time_entity: sensor.delta_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+    ac_out_power_entity: sensor.delta_2_ac_out_power
+  - entity: sensor.river_2_battery_level
+    name: River 2
+    remaining_time_entity: sensor.river_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.river_2_charge_remaining_time
+    ac_out_power_entity: sensor.river_2_ac_out_power
+
+# Which battery to use for outage analysis (0 = first battery, 1 = second, etc.)
+selected_battery: 0
+
+# Outage integration entities (shared for all batteries)
+outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
+outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
+next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
+
+# Display settings (applied to all batteries)
+green: 60
+yellow: 25
+precision: 0
+segments: 5
+gap: 2
+palette: gradient
+```
+
+**Note:** These examples use the [**HA Yasno Outages**](https://github.com/denysdovhan/ha-yasno-outages) integration for Ukrainian electricity outage information. Entity names will vary based on your city and DTEK group. Install it via HACS for automatic outage schedule tracking.
 
 ## ⚙️ Configuration Options
 
-### Basic Options
+### Card-Level Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `entity` | string | **Required** | The entity ID of your battery sensor |
-| `name` | string | Entity friendly name | Display name for the card |
-| `green` | number | `60` | Battery percentage threshold for green color |
-| `yellow` | number | `25` | Battery percentage threshold for yellow color |
-| `show_state` | boolean | `true` | Whether to display percentage text on battery |
+| `batteries` | array | **Required** | Array of battery objects (see Battery Object below) |
+| `selected_battery` | number | `0` | Which battery to use for outage analysis (0 = first, 1 = second, etc.) |
+| `green` | number | `60` | Battery percentage threshold for green color (applied to all) |
+| `yellow` | number | `25` | Battery percentage threshold for yellow color (applied to all) |
+| `show_state` | boolean | `true` | Whether to display percentage text on batteries |
 | `precision` | number | `0` | Number of decimal places for percentage display |
-| `invert` | boolean | `false` | Invert the battery reading (for sensors that report inversely) |
-| `segments` | number | `5` | Number of vertical columns in the battery |
-| `gap` | number | `3` | Gap between columns in pixels |
+| `segments` | number | `5` | Number of vertical segments in each battery |
+| `gap` | number | `2` | Gap between segments in pixels |
 | `palette` | string | `threshold` | Color mode: `threshold` (red/yellow/green) or `gradient` |
 
-### Battery Time & Power Options
+### Battery Object (Array Item)
+
+Each battery in the `batteries` array can have these properties:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `remaining_time_entity` | string | `null` | Optional entity ID for discharge remaining time (in minutes, shows ⏱ icon) |
-| `charge_remaining_time_entity` | string | `null` | Optional entity ID for charge remaining time (in minutes, shows ⚡ icon, displayed when discharge is 0) |
-| `ac_out_power_entity` | string | `null` | Optional entity ID for AC output power (in watts, shows animated energy flow and power value) |
+| `entity` | string | **Required** | The entity ID of the battery sensor (0-100%) |
+| `name` | string | `Battery N` | Display name for this battery |
+| `remaining_time_entity` | string | `null` | Optional entity ID for discharge remaining time (in minutes) |
+| `charge_remaining_time_entity` | string | `null` | Optional entity ID for charge remaining time (in minutes) |
+| `ac_out_power_entity` | string | `null` | Optional entity ID for AC output power (in watts) |
+| `invert` | boolean | `false` | Invert the battery reading (for sensors that report inversely) |
 
-### Outage Integration Options (NEW in v0.2.0)
+### Outage Integration Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -176,7 +225,9 @@ palette: gradient
 | `outage_end_time_entity` | string | `null` | Entity ID for outage end time. Supports ISO datetime format or Unix timestamp |
 | `next_outage_time_entity` | string | `null` | Entity ID for next scheduled outage start time. Supports ISO datetime format or Unix timestamp |
 
-**Note:** Charging time analysis uses your `charge_remaining_time_entity` sensor directly (v0.2.1+). No manual capacity/power configuration needed!
+**Note:** 
+- **v0.3.0**: Multi-battery support added! Use the `batteries` array to configure one or more batteries.
+- **v0.2.1+**: Charging time analysis uses your `charge_remaining_time_entity` sensor directly. No manual capacity/power configuration needed!
 
 ## 🔌 Compatible Sensors
 

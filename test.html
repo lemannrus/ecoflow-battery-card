@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eco Battery Card Test - v0.2.0 (Outage Management)</title>
+  <title>Eco Battery Card Test - v0.3.0 (Multi-Battery Vertical Layout)</title>
   <style>
     :root {
       --primary-text-color: #e1e1e1;
@@ -82,9 +82,9 @@
 
 <body>
   <h1>🔋 Eco Battery Card Test Page</h1>
-  <div class="subtitle">Version 0.2.0 - Testing outage management, battery analysis, and smart recommendations</div>
+  <div class="subtitle">Version 0.3.0 - Testing vertical multi-battery layout with outage management</div>
 
-  <div class="section-title">🔌 Outage Scenarios & Discharge Mode</div>
+  <div class="section-title">🔋 Single Battery Tests</div>
   <div id="discharge-container" class="test-container"></div>
 
   <div class="section-title">⚡ Charge Mode & Next Outage Analysis</div>
@@ -95,6 +95,9 @@
 
   <div class="section-title">🎨 Various Configurations</div>
   <div id="misc-container" class="test-container"></div>
+
+  <div class="section-title">🔋🔋 Multi-Battery Tests (NEW in v0.3.0)</div>
+  <div id="multi-battery-container" class="test-container"></div>
 
   <!-- Load Lit from CDN first -->
   <script type="module">
@@ -124,6 +127,55 @@
             friendly_name: 'EcoFlow Battery',
             unit_of_measurement: '%'
           }
+        },
+        'sensor.river_2_battery': {
+          state: String(Math.min(100, batteryLevel + 15)), // River 2 slightly higher
+          attributes: {
+            friendly_name: 'River 2 Battery',
+            unit_of_measurement: '%'
+          }
+        },
+        'sensor.delta_2_battery': {
+          state: String(batteryLevel),
+          attributes: {
+            friendly_name: 'Delta 2 Battery',
+            unit_of_measurement: '%'
+          }
+        },
+        'sensor.delta_pro_battery': {
+          state: String(Math.max(0, batteryLevel - 10)), // Delta Pro slightly lower
+          attributes: {
+            friendly_name: 'Delta Pro Battery',
+            unit_of_measurement: '%'
+          }
+        },
+        'sensor.river_2_discharge_remaining_time': dischargeTime !== null ? {
+          state: String(dischargeTime + 30), // River 2 has more time
+          attributes: {
+            friendly_name: 'River 2 Discharge Time'
+          }
+        } : {
+          state: 'unavailable',
+          attributes: {}
+        },
+        'sensor.river_2_charge_remaining_time': chargeTime !== null ? {
+          state: String(chargeTime),
+          attributes: {
+            friendly_name: 'River 2 Charge Time'
+          }
+        } : {
+          state: 'unavailable',
+          attributes: {}
+        },
+        'sensor.river_2_ac_out_power': acOutPower !== null ? {
+          state: String(Math.max(0, acOutPower - 100)), // River 2 less power
+          attributes: {
+            friendly_name: 'River 2 AC Output',
+            unit_of_measurement: 'W'
+          }
+        } : {
+          state: 'unavailable',
+          attributes: {}
         },
         'sensor.delta_2_discharge_remaining_time': dischargeTime !== null ? {
           state: String(dischargeTime),
@@ -210,16 +262,19 @@
 
       console.log('✓ eco-battery-card registered');
 
-      // Discharge Mode Tests
+      // Single Battery Tests
       const dischargeConfigs = [
         {
           label: 'OUTAGE: Sufficient - 150min battery vs 120min outage ✅',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             outage_status_entity: 'sensor.outage_status',
             outage_end_time_entity: 'sensor.outage_end',
             next_outage_time_entity: 'sensor.next_outage',
@@ -232,11 +287,14 @@
         {
           label: 'OUTAGE: CRITICAL - 90min battery vs 150min outage ⚠️',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             outage_status_entity: 'sensor.outage_status',
             outage_end_time_entity: 'sensor.outage_end',
             next_outage_time_entity: 'sensor.next_outage',
@@ -249,11 +307,14 @@
         {
           label: 'Normal Operation - 5h 33min - 350W output',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             outage_status_entity: 'sensor.outage_status',
             outage_end_time_entity: 'sensor.outage_end',
             next_outage_time_entity: 'sensor.next_outage',
@@ -266,11 +327,14 @@
         {
           label: 'Low Battery (20%) - 45min - Next outage in 2h',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             outage_status_entity: 'sensor.outage_status',
             outage_end_time_entity: 'sensor.outage_end',
             next_outage_time_entity: 'sensor.next_outage',
@@ -287,11 +351,14 @@
         {
           label: 'Charging (45%) - Tight! Next outage in 90min ⏰',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             outage_status_entity: 'sensor.outage_status',
             outage_end_time_entity: 'sensor.outage_end',
             next_outage_time_entity: 'sensor.next_outage',
@@ -304,10 +371,13 @@
         {
           label: 'Charging (50%) - 2h to full, outage in 4h ✅',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+            }],
+            selected_battery: 0,
             outage_status_entity: 'sensor.outage_status',
             outage_end_time_entity: 'sensor.outage_end',
             next_outage_time_entity: 'sensor.next_outage',
@@ -320,10 +390,13 @@
         {
           label: 'Charging (75%) - 1h 15min to full',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+            }],
+            selected_battery: 0,
             outage_status_entity: 'sensor.outage_status',
             outage_end_time_entity: 'sensor.outage_end',
             next_outage_time_entity: 'sensor.next_outage',
@@ -336,10 +409,13 @@
         {
           label: 'Almost Full (95%) - 30min to full',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+            }],
+            selected_battery: 0,
             palette: 'threshold',
             segments: 5,
             gap: 3
@@ -353,11 +429,14 @@
         {
           label: 'Connected - Full Battery (100%)',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             palette: 'threshold',
             segments: 5,
             gap: 3
@@ -367,10 +446,13 @@
         {
           label: 'Connected - High Battery (85%)',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+            }],
+            selected_battery: 0,
             palette: 'threshold',
             segments: 5,
             gap: 3
@@ -380,10 +462,13 @@
         {
           label: 'Connected - Medium Battery (60%)',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+            }],
+            selected_battery: 0,
             palette: 'threshold',
             segments: 5,
             gap: 3
@@ -393,10 +478,13 @@
         {
           label: 'Connected - Low Battery (30%)',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+            }],
+            selected_battery: 0,
             palette: 'threshold',
             segments: 5,
             gap: 3
@@ -410,11 +498,14 @@
         {
           label: 'Gradient Mode - Discharging 900W',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             palette: 'gradient',
             segments: 5,
             gap: 3
@@ -424,11 +515,14 @@
         {
           label: 'Gradient Mode - Charging (no power)',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             palette: 'gradient',
             segments: 5,
             gap: 3
@@ -438,8 +532,11 @@
         {
           label: 'No Sensors - Just Battery %',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2'
+            }],
+            selected_battery: 0,
             palette: 'threshold',
             segments: 5,
             gap: 3
@@ -449,16 +546,137 @@
         {
           label: '10 Segments - 2.5kW Output',
           config: {
-            entity: 'sensor.ecoflow_battery',
-            name: 'EcoFlow Delta 2',
-            remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
-            charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
-            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            batteries: [{
+              entity: 'sensor.ecoflow_battery',
+              name: 'Delta 2',
+              remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+              charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+              ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+            }],
+            selected_battery: 0,
             palette: 'threshold',
             segments: 10,
             gap: 2
           },
           hass: createMockHass(63, 90, 0, 2500)
+        }
+      ];
+
+      // Multi-Battery Tests
+      const multiBatteryConfigs = [
+        {
+          label: '2 Batteries - Delta 2 (65%) + River 2 (80%) - Active Outage',
+          config: {
+            batteries: [
+              {
+                entity: 'sensor.ecoflow_battery',
+                name: 'Delta 2',
+                remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+                charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+                ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+              },
+              {
+                entity: 'sensor.river_2_battery',
+                name: 'River 2',
+                remaining_time_entity: 'sensor.river_2_discharge_remaining_time',
+                charge_remaining_time_entity: 'sensor.river_2_charge_remaining_time',
+                ac_out_power_entity: 'sensor.river_2_ac_out_power'
+              }
+            ],
+            selected_battery: 0, // Use Delta 2 for outage analysis
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            palette: 'gradient',
+            segments: 5,
+            gap: 2
+          },
+          hass: createMockHass(65, 150, 0, 450, true, 120)
+        },
+        {
+          label: '2 Batteries - Both Charging, Next Outage Soon',
+          config: {
+            batteries: [
+              {
+                entity: 'sensor.ecoflow_battery',
+                name: 'Delta 2',
+                remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+                charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+              },
+              {
+                entity: 'sensor.river_2_battery',
+                name: 'River 2',
+                remaining_time_entity: 'sensor.river_2_discharge_remaining_time',
+                charge_remaining_time_entity: 'sensor.river_2_charge_remaining_time'
+              }
+            ],
+            selected_battery: 0,
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            palette: 'threshold',
+            segments: 5,
+            gap: 2
+          },
+          hass: createMockHass(45, 0, 50, 0, false, 120, 90)
+        },
+        {
+          label: '2 Batteries - Normal Operation, No Outage',
+          config: {
+            batteries: [
+              {
+                entity: 'sensor.ecoflow_battery',
+                name: 'Delta 2',
+                remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+                charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+                ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+              },
+              {
+                entity: 'sensor.river_2_battery',
+                name: 'River 2',
+                remaining_time_entity: 'sensor.river_2_discharge_remaining_time',
+                charge_remaining_time_entity: 'sensor.river_2_charge_remaining_time',
+                ac_out_power_entity: 'sensor.river_2_ac_out_power'
+              }
+            ],
+            selected_battery: 1, // Use River 2 for outage analysis
+            palette: 'gradient',
+            segments: 5,
+            gap: 2
+          },
+          hass: createMockHass(85, 333, 0, 350, false, 120, 240)
+        },
+        {
+          label: '3 Batteries - Mixed states (Charge/Discharge/Idle)',
+          config: {
+            batteries: [
+              {
+                entity: 'sensor.delta_2_battery',
+                name: 'Delta 2',
+                remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+                ac_out_power_entity: 'sensor.delta_2_ac_out_power'
+              },
+              {
+                entity: 'sensor.river_2_battery',
+                name: 'River 2',
+                charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+              },
+              {
+                entity: 'sensor.delta_pro_battery',
+                name: 'Delta Pro',
+                remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
+                charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time'
+              }
+            ],
+            selected_battery: 1, // Use River 2 for outage analysis
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            palette: 'threshold',
+            segments: 5,
+            gap: 2
+          },
+          hass: createMockHass(55, 45, 90, 0, false, 120, 240)
         }
       ];
 
@@ -490,9 +708,10 @@
       renderCards(chargeConfigs, 'charge-container');
       renderCards(connectedConfigs, 'connected-container');
       renderCards(miscConfigs, 'misc-container');
+      renderCards(multiBatteryConfigs, 'multi-battery-container');
 
       console.log('✓ Test cards rendered successfully');
-      console.log('📊 Total cards:', dischargeConfigs.length + chargeConfigs.length + connectedConfigs.length + miscConfigs.length);
+      console.log('📊 Total cards:', dischargeConfigs.length + chargeConfigs.length + connectedConfigs.length + miscConfigs.length + multiBatteryConfigs.length);
 
     } catch (error) {
       console.error('✗ Error initializing test page:', error);
