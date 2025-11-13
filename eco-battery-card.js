@@ -1,7 +1,7 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.3.0
+ * Version: 0.3.2
  *
  * Config example:
  * type: custom:eco-battery-card
@@ -454,6 +454,26 @@ class EcoBatteryCard extends LitBase {
   }
 
   /**
+   * Render time text element programmatically (to avoid template escaping issues)
+   */
+  _renderTimeText(centerX, centerY, remainingTime) {
+    if (!remainingTime) return '';
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', centerX);
+    text.setAttribute('y', centerY);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'central');
+    text.setAttribute('class', 'time-text-square');
+    text.setAttribute('fill', 'white');
+
+    const icon = remainingTime.type === 'charge' ? '⚡' : '⏱';
+    text.textContent = `${icon} ${remainingTime.time}`;
+
+    return text;
+  }
+
+  /**
    * Render a single vertical battery with all components
    * Returns HTML template for one battery column
    */
@@ -525,8 +545,8 @@ class EcoBatteryCard extends LitBase {
           <!-- Percentage text (centered in square, upper portion) -->
           <text x="${centerX}" y="${squareStartY + squareSize * 0.35}" text-anchor="middle" dominant-baseline="central" class="pct-square" fill="white">${pct.toFixed(this._config.precision)}%</text>
           
-          <!-- Time info inside square (below percentage) -->
-          <text x="${centerX}" y="${squareStartY + squareSize * 0.65}" text-anchor="middle" dominant-baseline="central" class="time-text-square" fill="white">${remainingTime ? (remainingTime.type === 'charge' ? '⚡' : '⏱') + ' ' + remainingTime.time : ''}</text>
+          <!-- Time info inside square (below percentage) - rendered programmatically -->
+          ${this._renderTimeText(centerX, squareStartY + squareSize * 0.65, remainingTime)}
           
           <!-- Status indicator -->
           ${statusIcon ? this._renderVerticalStatusIndicator(centerX, statusY, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
@@ -637,11 +657,12 @@ class EcoBatteryCard extends LitBase {
         gap: 8px;
       }
       .battery-svg {
-        width: 156px;
+        width: 100%;
+        max-width: 156px;
         height: auto;
       }
       .battery-name {
-        font-size: 16px;
+        font-size: clamp(12px, 3vw, 16px);
         font-weight: 600;
         fill: var(--primary-text-color);
       }
@@ -655,7 +676,7 @@ class EcoBatteryCard extends LitBase {
       .pct-square {
         fill: white;
         font-weight: 700;
-        font-size: 38px;
+        font-size: clamp(24px, 7vw, 38px);
         text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,1);
         filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
         pointer-events: none;
@@ -663,7 +684,7 @@ class EcoBatteryCard extends LitBase {
       .time-text-square {
         fill: white;
         font-weight: 600;
-        font-size: 20px;
+        font-size: clamp(14px, 4vw, 20px);
         text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,1);
         filter: drop-shadow(0 0 3px rgba(255,255,255,0.4));
         pointer-events: none;
@@ -679,9 +700,28 @@ class EcoBatteryCard extends LitBase {
       }
       .power-value-below {
         font-weight: 700;
-        font-size: 18px;
+        font-size: clamp(14px, 3.5vw, 18px);
         color: var(--success-color, #43a047);
         text-shadow: 0 0 8px rgba(67, 160, 71, 0.6);
+      }
+      
+      /* Responsive adjustments for smaller screens */
+      @media (max-width: 600px) {
+        .batteries-container {
+          gap: 16px;
+        }
+        ha-card.eco-card-vertical {
+          padding: 12px;
+        }
+      }
+      
+      @media (max-width: 400px) {
+        .batteries-container {
+          gap: 12px;
+        }
+        .battery-svg {
+          max-width: 120px;
+        }
       }
       .battery-time, .battery-power {
         display: -webkit-box;
