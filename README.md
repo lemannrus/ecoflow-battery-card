@@ -221,7 +221,7 @@ Each battery in the `batteries` array can have these properties:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `outage_status_entity` | string | `null` | Entity ID for current outage status. Supports states: `on`/`off`, `true`/`false`, `active`/`inactive`, `1`/`0` |
+| `outage_status_entity` | string | `null` | Entity ID for current outage status. Supports states: `on`/`off`, `true`/`false`, `active`/`inactive`, `outage`/`connected`, `1`/`0` |
 | `outage_end_time_entity` | string | `null` | Entity ID for outage end time. Supports ISO datetime format or Unix timestamp |
 | `next_outage_time_entity` | string | `null` | Entity ID for next scheduled outage start time. Supports ISO datetime format or Unix timestamp |
 

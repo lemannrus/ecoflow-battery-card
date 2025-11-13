@@ -128,7 +128,7 @@ class EcoBatteryCard extends LitBase {
     if (battery.remaining_time_entity) {
       const dischargeSt = this.hass?.states?.[battery.remaining_time_entity];
       if (dischargeSt && dischargeSt.state && dischargeSt.state !== 'unknown' && dischargeSt.state !== 'unavailable') {
-        const dischargeMinutes = Number(dischargeSt.state);
+        const dischargeMinutes = this._parseTimeValue(dischargeSt.state);
 
         // If discharge time is valid and > 0, use it
         if (Number.isFinite(dischargeMinutes) && dischargeMinutes > 0) {
@@ -141,7 +141,7 @@ class EcoBatteryCard extends LitBase {
     if (battery.charge_remaining_time_entity) {
       const chargeSt = this.hass?.states?.[battery.charge_remaining_time_entity];
       if (chargeSt && chargeSt.state && chargeSt.state !== 'unknown' && chargeSt.state !== 'unavailable') {
-        const chargeMinutes = Number(chargeSt.state);
+        const chargeMinutes = this._parseTimeValue(chargeSt.state);
 
         if (Number.isFinite(chargeMinutes) && chargeMinutes > 0) {
           return { time: this._formatMinutes(chargeMinutes), type: 'charge' };
@@ -150,6 +150,44 @@ class EcoBatteryCard extends LitBase {
     }
 
     return null;
+  }
+
+  /**
+   * Parse time value from sensor state
+   * Handles: "316m", "316", "5h 30m", etc.
+   */
+  _parseTimeValue(value) {
+    if (!value) return NaN;
+
+    // If it's already a number, return it
+    const numValue = Number(value);
+    if (Number.isFinite(numValue)) return numValue;
+
+    // Parse string formats like "316m", "5h 30m", "2h", etc.
+    const str = String(value).toLowerCase();
+    let totalMinutes = 0;
+
+    // Match hours (e.g., "5h")
+    const hoursMatch = str.match(/(\d+)h/);
+    if (hoursMatch) {
+      totalMinutes += parseInt(hoursMatch[1]) * 60;
+    }
+
+    // Match minutes (e.g., "30m" or just "316m")
+    const minutesMatch = str.match(/(\d+)m/);
+    if (minutesMatch) {
+      totalMinutes += parseInt(minutesMatch[1]);
+    }
+
+    // If no pattern matched, try to extract just the number
+    if (totalMinutes === 0) {
+      const numMatch = str.match(/(\d+)/);
+      if (numMatch) {
+        totalMinutes = parseInt(numMatch[1]);
+      }
+    }
+
+    return totalMinutes > 0 ? totalMinutes : NaN;
   }
 
   _formatMinutes(totalMinutes) {
@@ -197,9 +235,9 @@ class EcoBatteryCard extends LitBase {
     const statusSt = this.hass?.states?.[this._config.outage_status_entity];
     if (!statusSt) return { isActive: false, endTime: null, minutesRemaining: null };
 
-    // Check if outage is active (support various formats: on/off, true/false, active/inactive)
+    // Check if outage is active (support various formats: on/off, true/false, active/inactive, outage/connected)
     const state = statusSt.state?.toLowerCase();
-    const isActive = state === 'on' || state === 'true' || state === 'active' || state === '1';
+    const isActive = state === 'on' || state === 'true' || state === 'active' || state === '1' || state === 'outage';
 
     let endTime = null;
     let minutesRemaining = null;
