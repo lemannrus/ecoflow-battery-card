@@ -53,9 +53,10 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
   - Next outage start time
   - Time until next outage
   - Required charging time calculation
-- **Outage Schedule Display**: View your complete outage schedule
-  - Supports both plain text and JSON formats
-  - Perfect for scheduled/rolling blackouts
+- **Compatible with [HA Yasno Outages](https://github.com/denysdovhan/ha-yasno-outages)**: Perfect for Ukrainian users
+  - Automatic integration with DTEK/Yasno outage schedules
+  - No manual schedule configuration needed
+  - Real-time outage status updates
 - **Automated Recommendations**: Get actionable insights
   - "⚠️ Battery may run out before outage ends!"
   - "⏰ Start charging soon - limited time margin"
@@ -112,39 +113,35 @@ entity: sensor.ecoflow_battery_level
 name: "EcoFlow Delta 2"
 ```
 
-### Advanced Configuration
+### Advanced Configuration (Real-World Example)
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.ecoflow_battery_level
-name: "EcoFlow Delta 2"
+entity: sensor.delta_2_main_battery_level
+name: EcoFlow Delta 2
 
 # Battery time & power entities
-remaining_time_entity: sensor.delta_2_discharge_remaining_time  # Optional - discharge time in minutes
-charge_remaining_time_entity: sensor.delta_2_charge_remaining_time  # Optional - charge time in minutes
-ac_out_power_entity: sensor.delta_2_ac_out_power  # Optional - AC output power in watts
+remaining_time_entity: sensor.delta_2_discharge_remaining_time
+charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+ac_out_power_entity: sensor.delta_2_ac_out_power
 
 # Outage integration entities (NEW in v0.2.0)
-outage_status_entity: sensor.outage_status  # Optional - current outage status (on/off, true/false, active/inactive)
-outage_end_time_entity: sensor.outage_end_time  # Optional - when current outage will end (ISO datetime or timestamp)
-next_outage_time_entity: sensor.next_outage_time  # Optional - when next outage starts (ISO datetime or timestamp)
-outage_schedule_entity: sensor.outage_schedule  # Optional - outage schedule text or JSON
-
-# Battery specifications for charge calculations
-charge_rate_watts: 1000  # Optional - charging power in watts (default: 1000)
-battery_capacity_wh: 1024  # Optional - battery capacity in watt-hours (default: 1024)
+outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
+outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
+next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
 
 # Display settings
-green: 60        # Battery level >= 60% shows green
-yellow: 25       # Battery level >= 25% and < 60% shows yellow
-                 # Battery level < 25% shows red
-show_state: true # Show percentage text on battery
-precision: 1     # Decimal places for percentage (0 = whole numbers)
-invert: false    # Set to true if your sensor reports 0=full, 100=empty
-segments: 5      # Number of vertical columns
-gap: 3           # Gap between columns in px
-palette: threshold  # 'threshold' | 'gradient'
+green: 60
+yellow: 25
+show_state: true
+precision: 0
+invert: false
+segments: 5
+gap: 3
+palette: gradient
 ```
+
+**Note:** This example uses the [**HA Yasno Outages**](https://github.com/denysdovhan/ha-yasno-outages) integration for Ukrainian electricity outage information. Entity names will vary based on your city and DTEK group. Install it via HACS for automatic outage schedule tracking.
 
 ## ⚙️ Configuration Options
 
@@ -178,9 +175,8 @@ palette: threshold  # 'threshold' | 'gradient'
 | `outage_status_entity` | string | `null` | Entity ID for current outage status. Supports states: `on`/`off`, `true`/`false`, `active`/`inactive`, `1`/`0` |
 | `outage_end_time_entity` | string | `null` | Entity ID for outage end time. Supports ISO datetime format or Unix timestamp |
 | `next_outage_time_entity` | string | `null` | Entity ID for next scheduled outage start time. Supports ISO datetime format or Unix timestamp |
-| `outage_schedule_entity` | string | `null` | Entity ID for outage schedule information. Can be plain text or JSON string |
-| `charge_rate_watts` | number | `1000` | Charging power in watts. Used to calculate charging time needed |
-| `battery_capacity_wh` | number | `1024` | Battery capacity in watt-hours. Used to calculate charging time needed |
+
+**Note:** Charging time analysis uses your `charge_remaining_time_entity` sensor directly (v0.2.1+). No manual capacity/power configuration needed!
 
 ## 🔌 Compatible Sensors
 
@@ -209,19 +205,23 @@ The card automatically integrates with your Home Assistant theme using CSS custo
 
 ## 🔧 Integration Examples
 
-### EcoFlow Integration
+### EcoFlow with Yasno (Ukrainian Outage Tracking)
 
-If you're using the EcoFlow integration, your configuration might look like:
+Real-world example with EcoFlow Delta 2 and Yasno outage integration:
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.ecoflow_delta2_battery_level
-name: "EcoFlow Delta 2"
+entity: sensor.delta_2_main_battery_level
+name: EcoFlow Delta 2
 remaining_time_entity: sensor.delta_2_discharge_remaining_time
 charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
 ac_out_power_entity: sensor.delta_2_ac_out_power
-green: 80
-yellow: 30
+outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
+outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
+next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
+green: 60
+yellow: 25
+palette: gradient
 ```
 
 The card will automatically show:
@@ -253,6 +253,33 @@ The outage integration helps you manage scheduled power outages (rolling blackou
 2. **Predicting** if you can charge before the next outage
 3. **Alerting** you when action is needed
 4. **Displaying** your outage schedule
+
+### Compatible Integrations
+
+#### ⚡️ HA Yasno Outages (Recommended for Ukraine)
+
+For users in Ukraine affected by electricity outages, we recommend the [**HA Yasno Outages**](https://github.com/denysdovhan/ha-yasno-outages) integration by [@denysdovhan](https://github.com/denysdovhan).
+
+**Features:**
+- 📅 Automatic outage schedule tracking for all Ukrainian regions
+- 🔌 Real-time electricity status monitoring
+- ⏰ Next planned outage predictions
+- 🏢 Supports multiple providers (DTEK, Yasno)
+- 📊 Calendar view of planned outages
+
+**Installation:**
+1. Install via HACS (search for "Yasno Outages")
+2. Configure your city and DTEK group
+3. Use the provided sensors in your card configuration
+
+**Sensor mapping for this card:**
+- `sensor.yasno_*_electricity` → `outage_status_entity`
+- `sensor.yasno_*_next_connectivity` → `outage_end_time_entity`
+- `sensor.yasno_*_next_planned_outage` → `next_outage_time_entity`
+
+*Replace `*` with your specific city and group (e.g., `kiiv_dtek_2_2`)*
+
+---
 
 ### Required Sensors
 
@@ -293,13 +320,6 @@ template:
           {% else %}
             {{ (today + timedelta(days=1)).replace(hour=14, minute=0).isoformat() }}
           {% endif %}
-      
-      # Outage Schedule
-      - name: "Power Outage Schedule"
-        unique_id: power_outage_schedule
-        state: >
-          Daily outage: 14:00 - 16:00 (2 hours)
-          Please ensure battery is charged by 13:30
 ```
 
 #### Example 2: Integration with External API
@@ -318,33 +338,29 @@ template:
       
       - name: "Next Outage Time"
         state: "{{ state_attr('sensor.utility_data', 'next_outage_start') }}"
-      
-      - name: "Outage Schedule"
-        state: "{{ state_attr('sensor.utility_data', 'schedule') }}"
 ```
 
-#### Example 3: DTEK (Ukrainian Energy Provider) Integration
+#### Example 3: Yasno Integration (Ukrainian DTEK)
+
+If you're using the [**HA Yasno Outages**](https://github.com/denysdovhan/ha-yasno-outages) integration by [@denysdovhan](https://github.com/denysdovhan) for Ukrainian electricity outage tracking (DTEK), you can use the sensors directly:
 
 ```yaml
-# Example for users with DTEK integration
-template:
-  - sensor:
-      - name: "DTEK Outage Status"
-        state: >
-          {{ is_state('sensor.dtek_current_status', 'outage') and 'on' or 'off' }}
-      
-      - name: "DTEK Outage End"
-        state: >
-          {{ state_attr('sensor.dtek_schedule', 'current_outage_end') }}
-      
-      - name: "DTEK Next Outage"
-        state: >
-          {{ state_attr('sensor.dtek_schedule', 'next_outage_start') }}
-      
-      - name: "DTEK Schedule Text"
-        state: >
-          {{ state_attr('sensor.dtek_schedule', 'today_schedule') }}
+type: custom:eco-battery-card
+entity: sensor.delta_2_main_battery_level
+name: EcoFlow Delta 2
+
+# Your EcoFlow sensors
+remaining_time_entity: sensor.delta_2_discharge_remaining_time
+charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+ac_out_power_entity: sensor.delta_2_ac_out_power
+
+# Yasno/DTEK sensors (replace with your city/group)
+outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
+outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
+next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
 ```
+
+**Installation:** Install [HA Yasno Outages](https://github.com/denysdovhan/ha-yasno-outages) via HACS. After setup, it provides sensors for electricity status, connectivity times, and planned outages. Entity names vary by city and DTEK group (e.g., `yasno_kiiv_dtek_2_2` for Kyiv, Group 2.2).
 
 ### Full Card Configuration with Outage Features
 
@@ -362,12 +378,6 @@ ac_out_power_entity: sensor.delta_2_ac_out_power
 outage_status_entity: sensor.power_outage_status
 outage_end_time_entity: sensor.power_outage_end_time
 next_outage_time_entity: sensor.next_power_outage
-outage_schedule_entity: sensor.power_outage_schedule
-
-# Battery specs for accurate calculations
-# Example: EcoFlow Delta 2 specs
-charge_rate_watts: 1200  # AC charging: 1200W
-battery_capacity_wh: 1024  # 1024Wh capacity
 
 # Display settings
 green: 80
@@ -411,44 +421,35 @@ The card provides intelligent analysis and warnings:
 
 **Action**: No immediate action needed.
 
-### Charging Time Calculation
+### Charging Time Analysis
 
-The card calculates how long it takes to charge based on your configuration:
-
-```
-Formula: Charge Time = (Capacity × % to Charge) / Charge Rate
-
-Example:
-- Current battery: 45%
-- Target: 100%
-- Capacity: 1024 Wh
-- Charge rate: 1200 W
-
-Time needed = (1024 × 0.55) / 1200 = 0.47 hours = 28 minutes
-```
-
-**Important**: Set accurate values for `charge_rate_watts` and `battery_capacity_wh` for your specific battery model for accurate predictions.
+The card uses your EcoFlow's `charge_remaining_time_entity` sensor for accurate charging time predictions. This is more accurate than calculations because it accounts for:
+- Current charging power (varies with AC/solar/car input)
+- Battery temperature and condition
+- Charging curve (batteries charge slower near 100%)
+- Real-time charging rate
 
 ### Tips for Best Results
 
-1. **Accurate Battery Specs**: Use your actual battery specifications
-   - EcoFlow Delta 2: 1024Wh capacity, 1200W AC charge rate
-   - EcoFlow Delta Pro: 3600Wh capacity, 1800W AC charge rate
-   - EcoFlow River 2: 256Wh capacity, 360W AC charge rate
+1. **Configure All Sensors**: For best analysis, configure all three time sensors:
+   - `remaining_time_entity` - Battery discharge time
+   - `charge_remaining_time_entity` - Battery charge time
+   - Both sensors enable accurate outage vs battery analysis
 
 2. **Reliable Outage Data**: Ensure your outage sensors provide accurate information
-   - Use official utility company APIs when available
-   - Keep manual schedules updated
-   - Account for timezone differences
+   - Use official utility company integrations (like Yasno for Ukraine)
+   - Verify timezone configuration in Home Assistant
+   - Test sensors before relying on them during outages
 
 3. **Safety Margins**: The card recommends charging when there's still time margin
-   - Green status appears with 30+ minutes spare time
-   - Warning appears with less than 30 minutes spare time
-   - Plan to start charging before the warning appears
+   - ✅ Green status: 30+ minutes spare time
+   - ⚠️ Warning: Less than 30 minutes spare time
+   - Plan to start charging before warnings appear
 
-4. **Power Consumption**: The analysis assumes current power consumption
-   - High AC output = faster battery drain
-   - Adjust usage if warning appears
+4. **Power Consumption**: The analysis is based on current usage
+   - High AC output = faster battery drain = shorter remaining time
+   - Turn off non-essential devices during critical situations
+   - Monitor the AC output power display
 
 ## 🐛 Troubleshooting
 
@@ -473,14 +474,13 @@ Time needed = (1024 × 0.55) / 1200 = 0.47 hours = 28 minutes
 - **Wrong outage times**: Check datetime format in your sensors
   - Use ISO format: `2025-11-13T14:30:00` or Unix timestamps
   - Verify your timezone is configured correctly in Home Assistant
-- **Incorrect charge time calculations**: 
-  - Double-check `charge_rate_watts` and `battery_capacity_wh` values
-  - These should match your actual battery specifications
-  - Check sensor values in watts, not kilowatts
+  - Check Developer Tools → States to verify sensor values
 - **Analysis messages not appearing**:
-  - Ensure both battery remaining time and outage entities are configured
-  - Check that discharge/charge time sensors report values in minutes
-  - Verify outage status sensor returns 'on'/'off' or similar boolean values
+  - Ensure `charge_remaining_time_entity` is configured for charging analysis
+  - Ensure `remaining_time_entity` is configured for discharge analysis
+  - Check that time sensors report values in minutes (not seconds/hours)
+  - Verify outage status sensor returns 'on'/'off' or similar states
+  - Use Developer Tools → States to verify all sensor states
 
 ## 🤝 Contributing
 
