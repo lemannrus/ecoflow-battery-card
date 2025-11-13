@@ -1,7 +1,7 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.1.14
+ * Version: 0.2.0
  *
  * Config example:
  * type: custom:eco-battery-card
@@ -18,6 +18,11 @@
  * remaining_time_entity: sensor.delta_2_discharge_remaining_time  # optional
  * charge_remaining_time_entity: sensor.delta_2_charge_remaining_time  # optional
  * ac_out_power_entity: sensor.delta_2_ac_out_power  # optional
+ * outage_status_entity: sensor.outage_status  # optional (binary: on/off or active/inactive)
+ * outage_end_time_entity: sensor.outage_end_time  # optional (datetime or timestamp)
+ * next_outage_time_entity: sensor.next_outage_time  # optional (datetime or timestamp)
+ * charge_rate_watts: 1000  # optional (charging power in watts, for time calculations)
+ * battery_capacity_wh: 1024  # optional (battery capacity in watt-hours)
  */
 
 /* Lit helpers from HA (pattern used by many cards) */
@@ -47,6 +52,11 @@ class EcoBatteryCard extends LitBase {
       remaining_time_entity: config.remaining_time_entity || null,
       charge_remaining_time_entity: config.charge_remaining_time_entity || null,
       ac_out_power_entity: config.ac_out_power_entity || null,
+      outage_status_entity: config.outage_status_entity || null,
+      outage_end_time_entity: config.outage_end_time_entity || null,
+      next_outage_time_entity: config.next_outage_time_entity || null,
+      charge_rate_watts: typeof config.charge_rate_watts === 'number' ? config.charge_rate_watts : 1000,
+      battery_capacity_wh: typeof config.battery_capacity_wh === 'number' ? config.battery_capacity_wh : 1024,
       green: typeof config.green === 'number' ? config.green : 60,
       yellow: typeof config.yellow === 'number' ? config.yellow : 25,
       show_state: config.show_state !== false,
@@ -161,6 +171,186 @@ class EcoBatteryCard extends LitBase {
     return `${Math.round(watts)} W`;
   }
 
+  /**
+   * Get current outage status
+   * Returns: { isActive: boolean, endTime: Date|null, minutesRemaining: number|null }
+   */
+  _getOutageStatus() {
+    if (!this._config.outage_status_entity) return { isActive: false, endTime: null, minutesRemaining: null };
+
+    const statusSt = this.hass?.states?.[this._config.outage_status_entity];
+    if (!statusSt) return { isActive: false, endTime: null, minutesRemaining: null };
+
+    // Check if outage is active (support various formats: on/off, true/false, active/inactive)
+    const state = statusSt.state?.toLowerCase();
+    const isActive = state === 'on' || state === 'true' || state === 'active' || state === '1';
+
+    let endTime = null;
+    let minutesRemaining = null;
+
+    if (isActive && this._config.outage_end_time_entity) {
+      const endTimeSt = this.hass?.states?.[this._config.outage_end_time_entity];
+      if (endTimeSt && endTimeSt.state && endTimeSt.state !== 'unknown' && endTimeSt.state !== 'unavailable') {
+        endTime = this._parseDateTime(endTimeSt.state);
+        if (endTime) {
+          minutesRemaining = Math.max(0, Math.round((endTime - new Date()) / 60000));
+        }
+      }
+    }
+
+    return { isActive, endTime, minutesRemaining };
+  }
+
+  /**
+   * Get next scheduled outage information
+   * Returns: { startTime: Date|null, minutesUntil: number|null }
+   */
+  _getNextOutage() {
+    if (!this._config.next_outage_time_entity) return { startTime: null, minutesUntil: null };
+
+    const nextOutageSt = this.hass?.states?.[this._config.next_outage_time_entity];
+    if (!nextOutageSt || !nextOutageSt.state || nextOutageSt.state === 'unknown' || nextOutageSt.state === 'unavailable') {
+      return { startTime: null, minutesUntil: null };
+    }
+
+    const startTime = this._parseDateTime(nextOutageSt.state);
+    if (!startTime) return { startTime: null, minutesUntil: null };
+
+    const minutesUntil = Math.max(0, Math.round((startTime - new Date()) / 60000));
+    return { startTime, minutesUntil };
+  }
+
+  /**
+   * Parse datetime string (supports ISO format, timestamps, etc.)
+   */
+  _parseDateTime(value) {
+    if (!value) return null;
+
+    // Try parsing as ISO date
+    let date = new Date(value);
+    if (!isNaN(date.getTime())) return date;
+
+    // Try parsing as Unix timestamp (seconds)
+    const timestamp = Number(value);
+    if (Number.isFinite(timestamp)) {
+      date = new Date(timestamp * 1000);
+      if (!isNaN(date.getTime())) return date;
+    }
+
+    return null;
+  }
+
+  /**
+   * Calculate time needed to charge battery to target percentage
+   * Returns minutes needed
+   */
+  _calculateChargeTime(currentPct, targetPct = 100) {
+    if (currentPct >= targetPct) return 0;
+
+    const pctToCharge = targetPct - currentPct;
+    const whToCharge = (this._config.battery_capacity_wh * pctToCharge) / 100;
+    const hoursNeeded = whToCharge / this._config.charge_rate_watts;
+    return Math.ceil(hoursNeeded * 60);
+  }
+
+  /**
+   * Analyze outage situation and provide recommendations
+   * Returns: {
+   *   sufficientForOutage: boolean|null,
+   *   canChargeBeforeNext: boolean|null,
+   *   warningLevel: 'critical'|'warning'|'info'|'ok',
+   *   message: string
+   * }
+   */
+  _analyzeOutageSituation() {
+    const outageStatus = this._getOutageStatus();
+    const nextOutage = this._getNextOutage();
+    const remainingTime = this._remainingTime();
+    const currentPct = this._pct();
+
+    let sufficientForOutage = null;
+    let canChargeBeforeNext = null;
+    let warningLevel = 'ok';
+    let message = '';
+
+    // Analysis 1: Current outage - is battery sufficient?
+    if (outageStatus.isActive && outageStatus.minutesRemaining !== null) {
+      if (remainingTime && remainingTime.type === 'discharge') {
+        const dischargeMinutes = this._parseTimeToMinutes(remainingTime.time);
+        sufficientForOutage = dischargeMinutes >= outageStatus.minutesRemaining;
+
+        if (!sufficientForOutage) {
+          warningLevel = 'critical';
+          const shortfall = outageStatus.minutesRemaining - dischargeMinutes;
+          message = `⚠️ Battery may run out ${this._formatMinutes(shortfall)} before outage ends!`;
+        } else {
+          const excess = dischargeMinutes - outageStatus.minutesRemaining;
+          if (excess < 30) {
+            warningLevel = 'warning';
+            message = `⚡ Battery sufficient, but only ${this._formatMinutes(excess)} spare time`;
+          } else {
+            warningLevel = 'ok';
+            message = `✅ Battery sufficient for outage (${this._formatMinutes(excess)} spare)`;
+          }
+        }
+      }
+    }
+
+    // Analysis 2: Next outage - can we charge enough?
+    if (!outageStatus.isActive && nextOutage.minutesUntil !== null) {
+      const chargeTimeNeeded = this._calculateChargeTime(currentPct, 100);
+      canChargeBeforeNext = nextOutage.minutesUntil >= chargeTimeNeeded;
+
+      if (currentPct < 80) {
+        if (!canChargeBeforeNext) {
+          warningLevel = warningLevel === 'critical' ? 'critical' : 'warning';
+          message = message || `⚠️ Not enough time to fully charge before next outage!`;
+        } else {
+          const timeMargin = nextOutage.minutesUntil - chargeTimeNeeded;
+          if (timeMargin < 60 && warningLevel === 'ok') {
+            warningLevel = 'info';
+            message = message || `⏰ Start charging soon - ${this._formatMinutes(timeMargin)} margin`;
+          }
+        }
+      }
+    }
+
+    return { sufficientForOutage, canChargeBeforeNext, warningLevel, message };
+  }
+
+  /**
+   * Parse time string like "2h 30m" or "45m" to minutes
+   */
+  _parseTimeToMinutes(timeStr) {
+    if (!timeStr) return 0;
+
+    let totalMinutes = 0;
+    const hoursMatch = timeStr.match(/(\d+)h/);
+    const minutesMatch = timeStr.match(/(\d+)m/);
+
+    if (hoursMatch) totalMinutes += parseInt(hoursMatch[1]) * 60;
+    if (minutesMatch) totalMinutes += parseInt(minutesMatch[1]);
+
+    return totalMinutes;
+  }
+
+  /**
+   * Format datetime for display
+   */
+  _formatDateTime(date) {
+    if (!date) return '';
+
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const isTomorrow = date.toDateString() === new Date(now.getTime() + 86400000).toDateString();
+
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (isToday) return `Today ${timeStr}`;
+    if (isTomorrow) return `Tomorrow ${timeStr}`;
+    return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
   _renderEnergyFlow(bodyX, bodyW, bodyY, bodyH, W, PAD, color) {
     const mainG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     mainG.setAttribute('class', 'energy-flow');
@@ -254,6 +444,9 @@ class EcoBatteryCard extends LitBase {
     const color = this._color(pct);
     const remainingTime = this._remainingTime();
     const acOutPower = this._acOutPower();
+    const outageStatus = this._getOutageStatus();
+    const nextOutage = this._getNextOutage();
+    const analysis = this._analyzeOutageSituation();
 
     // SVG geometry
     const W = 220; // total width
@@ -368,6 +561,46 @@ class EcoBatteryCard extends LitBase {
               <span class="power-icon">⚡</span>
               <span class="power-label">Out:</span>
               <span class="power-value">${this._formatPower(acOutPower)}</span>
+            </div>
+          ` : ''}
+          
+          <!-- Outage Analysis Warning/Info -->
+          ${analysis.message ? html`
+            <div class="outage-analysis ${analysis.warningLevel}">
+              <span class="analysis-message">${analysis.message}</span>
+            </div>
+          ` : ''}
+          
+          <!-- Current Outage Info -->
+          ${outageStatus.isActive && outageStatus.endTime ? html`
+            <div class="outage-compact">
+              <div class="outage-compact-header">
+                <span class="outage-icon">🔌</span>
+                <span class="outage-label">Outage Active</span>
+              </div>
+              <div class="outage-compact-info">
+                <span class="compact-label">Ends:</span>
+                <span class="compact-value">${this._formatDateTime(outageStatus.endTime)}</span>
+                <span class="compact-separator">•</span>
+                <span class="compact-label">Remaining:</span>
+                <span class="compact-value">${this._formatMinutes(outageStatus.minutesRemaining)}</span>
+              </div>
+            </div>
+          ` : ''}
+          
+          <!-- Next Outage Info -->
+          ${!outageStatus.isActive && nextOutage.startTime ? html`
+            <div class="outage-compact outage-next">
+              <div class="outage-compact-header">
+                <span class="outage-icon">📅</span>
+                <span class="outage-label">Next Outage</span>
+              </div>
+              <div class="outage-compact-info">
+                <span class="compact-value-lg">${this._formatDateTime(nextOutage.startTime)}</span>
+                <span class="compact-separator">•</span>
+                <span class="compact-label">In:</span>
+                <span class="compact-value">${this._formatMinutes(nextOutage.minutesUntil)}</span>
+              </div>
             </div>
           ` : ''}
         </div>
@@ -517,6 +750,103 @@ class EcoBatteryCard extends LitBase {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.3); }
       }
+      
+      /* Outage Analysis Styles */
+      .outage-analysis {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 12px;
+        margin-top: 6px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+      }
+      .outage-analysis.critical {
+        background: var(--error-color, #e53935);
+        color: white;
+        animation: alertPulse 2s ease-in-out infinite;
+      }
+      .outage-analysis.warning {
+        background: var(--warning-color, #fbc02d);
+        color: #333;
+      }
+      .outage-analysis.info {
+        background: var(--info-color, #2196f3);
+        color: white;
+      }
+      .outage-analysis.ok {
+        background: var(--success-color, #43a047);
+        color: white;
+      }
+      .analysis-message {
+        line-height: 1.3;
+      }
+      
+      /* Compact Outage Styles */
+      .outage-compact {
+        background: var(--card-background-color, rgba(255,255,255,0.05));
+        border: 2px solid var(--error-color, #e53935);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-top: 6px;
+      }
+      .outage-compact.outage-next {
+        border-color: var(--info-color, #2196f3);
+      }
+      .outage-compact-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--primary-text-color);
+      }
+      .outage-icon {
+        font-size: 16px;
+      }
+      .outage-label {
+        flex: 1;
+      }
+      .outage-compact-info {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .compact-label {
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      }
+      .compact-value {
+        color: var(--primary-text-color);
+        font-weight: 600;
+      }
+      .compact-value-lg {
+        color: var(--primary-text-color);
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .compact-separator {
+        color: var(--divider-color);
+        opacity: 0.6;
+      }
+      
+      /* Alert Pulse Animation */
+      @keyframes alertPulse {
+        0%, 100% { 
+          opacity: 1;
+          box-shadow: 0 0 0 0 var(--error-color, #e53935);
+        }
+        50% { 
+          opacity: 0.85;
+          box-shadow: 0 0 20px 5px rgba(229, 57, 53, 0.4);
+        }
+      }
     `;
   }
 
@@ -527,4 +857,4 @@ if (!customElements.get('eco-battery-card')) {
   customElements.define('eco-battery-card', EcoBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.1.26 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c ECO-BATTERY-CARD %c v0.2.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');

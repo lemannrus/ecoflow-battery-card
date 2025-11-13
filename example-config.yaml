@@ -1,0 +1,183 @@
+# Example Configuration for Eco Battery Card with Outage Integration
+# Version 0.2.0
+
+# Basic Configuration (without outage features)
+type: custom:eco-battery-card
+entity: sensor.ecoflow_battery
+name: EcoFlow Delta 2
+green: 60
+yellow: 25
+palette: gradient
+segments: 5
+gap: 3
+precision: 0
+show_state: true
+invert: false
+remaining_time_entity: sensor.delta_2_discharge_remaining_time
+charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+ac_out_power_entity: sensor.delta_2_ac_out_power
+
+---
+
+# Full Configuration (WITH outage features)
+type: custom:eco-battery-card
+entity: sensor.ecoflow_battery
+name: EcoFlow Delta 2
+
+# Battery Display Settings
+green: 60        # Green threshold percentage
+yellow: 25       # Yellow threshold percentage
+palette: gradient  # 'threshold' or 'gradient'
+segments: 5      # Number of battery segments
+gap: 3           # Gap between segments in pixels
+precision: 0     # Decimal precision for percentage
+show_state: true
+invert: false
+
+# EcoFlow Sensor Entities
+remaining_time_entity: sensor.delta_2_discharge_remaining_time
+charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+ac_out_power_entity: sensor.delta_2_ac_out_power
+
+# Outage Integration Sensors
+outage_status_entity: sensor.outage_status  
+# Expected states: 'on'/'off', 'true'/'false', 'active'/'inactive', or '1'/'0'
+
+outage_end_time_entity: sensor.outage_end_time
+# Expected format: ISO datetime (2025-11-13T14:30:00) or Unix timestamp
+
+next_outage_time_entity: sensor.next_outage_time
+# Expected format: ISO datetime (2025-11-13T14:30:00) or Unix timestamp
+
+outage_schedule_entity: sensor.outage_schedule
+# Expected format: Plain text or JSON string with schedule information
+
+# Battery Specifications (for charge time calculations)
+charge_rate_watts: 1000    # Your charger's power output in watts
+battery_capacity_wh: 1024  # Battery capacity in watt-hours
+
+---
+
+# Example: Creating Template Sensors for Outage Integration
+# Add these to your Home Assistant configuration.yaml
+
+template:
+  - sensor:
+      # Outage Status (example using a binary sensor)
+      - name: "Outage Status"
+        unique_id: outage_status
+        state: >
+          {{ states('binary_sensor.power_outage') }}
+        
+      # Outage End Time (example calculation)
+      - name: "Outage End Time"
+        unique_id: outage_end_time
+        state: >
+          {% if is_state('binary_sensor.power_outage', 'on') %}
+            {{ (now() + timedelta(hours=2)).isoformat() }}
+          {% else %}
+            unavailable
+          {% endif %}
+        
+      # Next Outage Time (example scheduled outage)
+      - name: "Next Outage Time"
+        unique_id: next_outage_time
+        state: >
+          {% set today = now().date() %}
+          {% set outage_hour = 14 %}
+          {% if now().hour < outage_hour %}
+            {{ today.replace(hour=outage_hour, minute=0).isoformat() }}
+          {% else %}
+            {{ (today + timedelta(days=1)).replace(hour=outage_hour, minute=0).isoformat() }}
+          {% endif %}
+        
+      # Outage Schedule (example text schedule)
+      - name: "Outage Schedule"
+        unique_id: outage_schedule
+        state: >
+          Daily: 14:00-16:00
+          Maintenance: Every Sunday 10:00-12:00
+
+---
+
+# Example: Integration with DTEK (Ukrainian Energy Company) API
+# If you have a custom integration that provides outage information
+
+template:
+  - sensor:
+      - name: "DTEK Outage Status"
+        unique_id: dtek_outage_status
+        state: >
+          {{ states('sensor.dtek_current_outage_status') }}
+        
+      - name: "DTEK Outage End Time"
+        unique_id: dtek_outage_end_time
+        state: >
+          {{ state_attr('sensor.dtek_schedule', 'end_time') }}
+        
+      - name: "DTEK Next Outage Time"
+        unique_id: dtek_next_outage_time
+        state: >
+          {{ state_attr('sensor.dtek_schedule', 'next_start_time') }}
+        
+      - name: "DTEK Outage Schedule"
+        unique_id: dtek_outage_schedule
+        state: >
+          {{ state_attr('sensor.dtek_schedule', 'schedule_text') }}
+
+---
+
+# Features Explanation:
+
+# 1. Outage Status Analysis
+#    - Automatically detects when an outage is active
+#    - Shows remaining time until power returns
+#    - Displays when the outage will end
+
+# 2. Battery Sufficiency Analysis
+#    - Compares battery discharge time vs outage duration
+#    - Shows if battery will last through the outage
+#    - Warns if battery might run out before outage ends
+#    - Color-coded alerts:
+#      * RED (Critical): Battery won't last
+#      * YELLOW (Warning): Battery sufficient but tight
+#      * GREEN (OK): Battery has sufficient reserve
+
+# 3. Charging Time Analysis
+#    - Calculates time needed to fully charge battery
+#    - Compares with time until next outage
+#    - Warns if there's not enough time to charge
+#    - Shows charging time needed in the "Next Outage" section
+
+# 4. Outage Schedule Display
+#    - Shows your outage schedule
+#    - Supports both text and JSON formats
+#    - Helps plan battery usage
+
+# 5. Smart Recommendations
+#    - "Start charging soon" if next outage is approaching
+#    - "Battery may run out" if current drain is too high
+#    - "Battery sufficient for outage" confirmation
+
+---
+
+# Visual Indicators:
+
+# Analysis Messages (top of card):
+#   ⚠️ Critical (Red, pulsing): Immediate action needed
+#   ⚠️ Warning (Yellow): Attention required
+#   ⏰ Info (Blue): Informational notice
+#   ✅ OK (Green): All good
+
+# Outage Active Box (red border):
+#   🔌 Outage Active
+#   Shows: End time, Remaining time
+
+# Next Outage Box (blue border):
+#   📅 Next Outage
+#   Shows: Start time, Time until start, Charge time needed
+
+# Schedule Box (gray border):
+#   📋 Schedule
+#   Shows: Your outage schedule text/data
+

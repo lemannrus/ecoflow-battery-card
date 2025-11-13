@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eco Battery Card Test - v0.1.15 (CSS Animations)</title>
+  <title>Eco Battery Card Test - v0.2.0 (Outage Management)</title>
   <style>
     :root {
       --primary-text-color: #e1e1e1;
@@ -82,15 +82,15 @@
 
 <body>
   <h1>🔋 Eco Battery Card Test Page</h1>
-  <div class="subtitle">Version 0.1.13 - Testing animated status indicator, energy flow, and power output</div>
+  <div class="subtitle">Version 0.2.0 - Testing outage management, battery analysis, and smart recommendations</div>
 
-  <div class="section-title">⏱ Discharge Mode (Battery Providing Power)</div>
+  <div class="section-title">🔌 Outage Scenarios & Discharge Mode</div>
   <div id="discharge-container" class="test-container"></div>
 
-  <div class="section-title">⚡ Charge Mode (Battery Charging)</div>
+  <div class="section-title">⚡ Charge Mode & Next Outage Analysis</div>
   <div id="charge-container" class="test-container"></div>
 
-  <div class="section-title">🔌 Connected Mode (Idle - Not Charging/Discharging)</div>
+  <div class="section-title">🔋 Connected Mode (Idle - Not Charging/Discharging)</div>
   <div id="connected-container" class="test-container"></div>
 
   <div class="section-title">🎨 Various Configurations</div>
@@ -116,7 +116,7 @@
     }
 
     // Create mock HASS object factory
-    window.createMockHass = (batteryLevel, dischargeTime = null, chargeTime = null, acOutPower = null) => ({
+    window.createMockHass = (batteryLevel, dischargeTime = null, chargeTime = null, acOutPower = null, outageActive = false, outageEndMinutes = 120, nextOutageMinutes = 240) => ({
       states: {
         'sensor.ecoflow_battery': {
           state: String(batteryLevel),
@@ -148,6 +148,30 @@
           attributes: {
             friendly_name: 'AC Output Power',
             unit_of_measurement: 'W'
+          }
+        } : {
+          state: 'unavailable',
+          attributes: {}
+        },
+        'sensor.outage_status': {
+          state: outageActive ? 'on' : 'off',
+          attributes: {
+            friendly_name: 'Outage Status'
+          }
+        },
+        'sensor.outage_end': outageActive ? {
+          state: new Date(Date.now() + outageEndMinutes * 60000).toISOString(),
+          attributes: {
+            friendly_name: 'Outage End Time'
+          }
+        } : {
+          state: 'unavailable',
+          attributes: {}
+        },
+        'sensor.next_outage': !outageActive ? {
+          state: new Date(Date.now() + nextOutageMinutes * 60000).toISOString(),
+          attributes: {
+            friendly_name: 'Next Outage Time'
           }
         } : {
           state: 'unavailable',
@@ -189,90 +213,121 @@
       // Discharge Mode Tests
       const dischargeConfigs = [
         {
-          label: 'High Battery (85%) - 5h 33min - 350W output',
+          label: 'OUTAGE: Sufficient - 150min battery vs 120min outage ✅',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
             ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            charge_rate_watts: 1200,
+            battery_capacity_wh: 1024,
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(85, 333, 0, 350) // 333 minutes, 350W output
+          hass: createMockHass(65, 150, 0, 450, true, 120) // OUTAGE: 150min battery, 120min outage
         },
         {
-          label: 'Medium Battery (55%) - 2h 15min - 1.2kW output',
+          label: 'OUTAGE: CRITICAL - 90min battery vs 150min outage ⚠️',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
             ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            charge_rate_watts: 1200,
+            battery_capacity_wh: 1024,
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(55, 135, 0, 1200) // 135 minutes, 1200W output
+          hass: createMockHass(35, 90, 0, 650, true, 150) // CRITICAL: 90min battery, 150min outage!
         },
         {
-          label: 'Low Battery (20%) - 45min - 750W output',
+          label: 'Normal Operation - 5h 33min - 350W output',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
             ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            charge_rate_watts: 1200,
+            battery_capacity_wh: 1024,
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(20, 45, 0, 750)
+          hass: createMockHass(85, 333, 0, 350, false, 120, 240) // No outage, next in 4h
         },
         {
-          label: 'Critical Battery (8%) - 12min - 150W output',
+          label: 'Low Battery (20%) - 45min - Next outage in 2h',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
             ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            charge_rate_watts: 1200,
+            battery_capacity_wh: 1024,
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(8, 12, 0, 150)
+          hass: createMockHass(20, 45, 0, 750, false, 120, 120) // Next outage in 2h
         }
       ];
 
       // Charge Mode Tests
       const chargeConfigs = [
         {
-          label: 'Charging (25%) - 3h 45min to full',
+          label: 'Charging (45%) - Tight! Next outage in 90min ⏰',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            ac_out_power_entity: 'sensor.delta_2_ac_out_power',
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            charge_rate_watts: 1200,
+            battery_capacity_wh: 1024,
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(25, 0, 225) // 0 discharge, 225 minutes charge
+          hass: createMockHass(45, 0, 35, 0, false, 120, 90) // Need 35min to charge, outage in 90min
         },
         {
-          label: 'Charging (50%) - 2h to full',
+          label: 'Charging (50%) - 2h to full, outage in 4h ✅',
           config: {
             entity: 'sensor.ecoflow_battery',
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            charge_rate_watts: 1200,
+            battery_capacity_wh: 1024,
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(50, 0, 120) // Exactly 2 hours
+          hass: createMockHass(50, 0, 120, 0, false, 120, 240) // Plenty of time
         },
         {
           label: 'Charging (75%) - 1h 15min to full',
@@ -281,11 +336,16 @@
             name: 'EcoFlow Delta 2',
             remaining_time_entity: 'sensor.delta_2_discharge_remaining_time',
             charge_remaining_time_entity: 'sensor.delta_2_charge_remaining_time',
+            outage_status_entity: 'sensor.outage_status',
+            outage_end_time_entity: 'sensor.outage_end',
+            next_outage_time_entity: 'sensor.next_outage',
+            charge_rate_watts: 1200,
+            battery_capacity_wh: 1024,
             palette: 'threshold',
             segments: 5,
             gap: 3
           },
-          hass: createMockHass(75, 0, 75)
+          hass: createMockHass(75, 0, 75, 0, false, 120, 240)
         },
         {
           label: 'Almost Full (95%) - 30min to full',
