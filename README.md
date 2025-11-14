@@ -1,13 +1,13 @@
-# EcoFlow Battery Card for Home Assistant
+# Smart Battery Card for Home Assistant
 
 <!-- Badges -->
 <p align="left">
   <!-- Replace OWNER/REPO below when you publish to GitHub -->
-  <a href="https://github.com/lemannrus/ecoflow-battery-card/releases">
-    <img alt="GitHub release" src="https://img.shields.io/github/v/release/lemannrus/ecoflow-battery-card?logo=github" />
+  <a href="https://github.com/lemannrus/smart-battery-card/releases">
+    <img alt="GitHub release" src="https://img.shields.io/github/v/release/lemannrus/smart-battery-card?logo=github" />
   </a>
-  <a href="https://github.com/lemannrus/ecoflow-battery-card/releases">
-    <img alt="Downloads" src="https://img.shields.io/github/downloads/lemannrus/ecoflow-battery-card/total?logo=github" />
+  <a href="https://github.com/lemannrus/smart-battery-card/releases">
+    <img alt="Downloads" src="https://img.shields.io/github/downloads/lemannrus/smart-battery-card/total?logo=github" />
   </a>
   <a href="https://hacs.xyz/">
     <img alt="HACS" src="https://img.shields.io/badge/HACS-Custom-41BDF5?logo=homeassistant&logoColor=white" />
@@ -20,12 +20,12 @@
   </a>
 </p>
 
-A custom Lovelace card for Home Assistant that displays EcoFlow battery levels with beautiful, animated circular battery indicators. Features smooth liquid-like fill animation with wave effects, multi-battery support, and intelligent outage management for power stations.
+A custom Lovelace card for Home Assistant that displays battery levels with beautiful, animated circular battery indicators. Features smooth liquid-like fill animation with wave effects, multi-battery support, and intelligent outage management. Works with any battery sensor - EcoFlow, Jackery, Tesla Powerwall, or any other power station.
 
 ## ✨ Features
 
 ### Multi-Battery Support (NEW in v0.3.0) 🔋🔋
-- **Multiple Batteries Display**: Show all your EcoFlow devices in one card
+- **Multiple Batteries Display**: Show all your battery devices in one card
   - Dynamic vertical layout that automatically adjusts to the number of batteries
   - Single battery: centered display
   - Two batteries: left and right layout
@@ -110,13 +110,13 @@ The card displays circular battery indicators with:
 
 ### Manual Installation
 
-1. Download the `eco-battery-card.js` file
+1. Download the `smart-battery-card.js` file
 2. Copy it to your `config/www/` directory
 3. Add the resource to your Lovelace configuration:
 
 ```yaml
 resources:
-  - url: /local/eco-battery-card.js
+  - url: /local/smart-battery-card.js
     type: module
 ```
 
@@ -125,7 +125,7 @@ resources:
 ### Basic Configuration (Single Battery)
 
 ```yaml
-type: custom:eco-battery-card
+type: custom:smart-battery-card
 batteries:
   - entity: sensor.ecoflow_battery_level
     name: "EcoFlow Delta 2"
@@ -134,7 +134,7 @@ batteries:
 ### Advanced Configuration (Single Battery with Outage Monitoring)
 
 ```yaml
-type: custom:eco-battery-card
+type: custom:smart-battery-card
 batteries:
   - entity: sensor.delta_2_main_battery_level
     name: Delta 2
@@ -157,7 +157,7 @@ palette: gradient
 ### Multi-Battery Configuration (NEW in v0.3.0) 🔋🔋
 
 ```yaml
-type: custom:eco-battery-card
+type: custom:smart-battery-card
 batteries:
   - entity: sensor.delta_2_main_battery_level
     name: Delta 2
@@ -260,7 +260,7 @@ The card automatically integrates with your Home Assistant theme using CSS custo
 Real-world example with EcoFlow Delta 2 and Yasno outage integration:
 
 ```yaml
-type: custom:eco-battery-card
+type: custom:smart-battery-card
 batteries:
   - entity: sensor.delta_2_main_battery_level
     name: EcoFlow Delta 2
@@ -293,7 +293,7 @@ The card will automatically show:
 ### Generic Battery Sensor
 
 ```yaml
-type: custom:eco-battery-card
+type: custom:smart-battery-card
 batteries:
   - entity: sensor.ups_battery_level  
     name: "UPS Battery"
@@ -402,7 +402,7 @@ template:
 If you're using the [**HA Yasno Outages**](https://github.com/denysdovhan/ha-yasno-outages) integration by [@denysdovhan](https://github.com/denysdovhan) for Ukrainian electricity outage tracking (DTEK), you can use the sensors directly:
 
 ```yaml
-type: custom:eco-battery-card
+type: custom:smart-battery-card
 batteries:
   - entity: sensor.delta_2_main_battery_level
     name: EcoFlow Delta 2
@@ -421,7 +421,7 @@ next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
 ### Full Card Configuration with Outage Features
 
 ```yaml
-type: custom:eco-battery-card
+type: custom:smart-battery-card
 batteries:
   - entity: sensor.ecoflow_battery_level
     name: "EcoFlow Delta 2"

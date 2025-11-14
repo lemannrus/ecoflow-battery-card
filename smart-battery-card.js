@@ -1,10 +1,10 @@
 /*
- * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
+ * Smart Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: Alex Hryhor
- * Version: 0.3.8
+ * Version: 0.4.0
 *
 * Config example:
-* type: custom:eco-battery-card
+* type: custom:smart-battery-card
 * batteries:
 *   - entity: sensor.delta_2_main_battery_level
 *     name: Delta 2
@@ -43,7 +43,7 @@ const html = LitBase.prototype.html;
 const css = LitBase.prototype.css;
 const svg = LitBase.prototype.svg || ((strings, ...values) => strings.raw ? strings : strings);
 
-class EcoBatteryCard extends LitBase {
+class SmartBatteryCard extends LitBase {
   static get properties() {
     return {
       hass: {},
@@ -1080,8 +1080,8 @@ class EcoBatteryCard extends LitBase {
   }
 }
 
-if (!customElements.get('eco-battery-card')) {
-  customElements.define('eco-battery-card', EcoBatteryCard);
+if (!customElements.get('smart-battery-card')) {
+  customElements.define('smart-battery-card', SmartBatteryCard);
 }
 
-console.info('%c ECO-BATTERY-CARD %c v0.3.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');
+console.info('%c SMART-BATTERY-CARD %c v0.4.0 ', 'background:#0b8043;color:white;border-radius:3px 0 0 3px;padding:2px 4px', 'background:#263238;color:#fff;border-radius:0 3px 3px 0;padding:2px 4px');

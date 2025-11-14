@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eco Battery Card Test - v0.3.8 (Outage Logic & CSS Fixes)</title>
+  <title>Smart Battery Card Test - v0.4.0 (Rebranding)</title>
   <style>
     :root {
       --primary-text-color: #e1e1e1;
@@ -81,19 +81,18 @@
 </head>
 
 <body>
-  <h1>🔋 Eco Battery Card Test Page</h1>
-  <div class="subtitle">Version 0.3.8 - Outage logic & CSS boundary fixes 🔧
+  <h1>🔋 Smart Battery Card Test Page</h1>
+  <div class="subtitle">Version 0.4.0 - Rebranding & Universal Battery Support 🎉
   </div>
 
   <div
     style="text-align: center; margin: 20px auto; padding: 15px; background: rgba(67, 160, 71, 0.1); border-radius: 8px; max-width: 800px; border: 1px solid rgba(67, 160, 71, 0.3);">
-    <div style="font-size: 13px; color: var(--secondary-text-color); margin-bottom: 8px;">✨ What's New in v0.3.8</div>
+    <div style="font-size: 13px; color: var(--secondary-text-color); margin-bottom: 8px;">✨ What's New in v0.4.0</div>
     <div style="font-size: 12px; color: var(--primary-text-color); line-height: 1.6;">
-      • <strong>Smart outage display</strong>: Show active outage OR next outage, not both<br>
-      • Fixed battery names cutting off at card boundaries<br>
-      • Fixed text overlapping with popups and other elements<br>
-      • Improved spacing and positioning for all text elements<br>
-      • Added pointer-events: none to prevent text blocking clicks
+      • <strong>Renamed to Smart Battery Card</strong>: Universal battery support (EcoFlow, Jackery, Tesla, etc.)<br>
+      • ⚠️ <strong>Breaking change</strong>: Update config to <code>type: custom:smart-battery-card</code><br>
+      • More generic branding reflects multi-platform compatibility<br>
+      • Works with any battery sensor in Home Assistant
     </div>
   </div>
 
@@ -254,7 +253,7 @@
     const loadCardScript = () => {
       return new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = './eco-battery-card.js';
+        script.src = './smart-battery-card.js';
         script.onload = () => {
           console.log('✓ Card script loaded');
           resolve();
@@ -706,7 +705,7 @@
           labelDiv.className = 'test-label';
           labelDiv.textContent = label;
 
-          const card = document.createElement('eco-battery-card');
+          const card = document.createElement('smart-battery-card');
           card.setConfig(config);
           card.hass = hass;
 
@@ -731,7 +730,7 @@
       document.body.innerHTML =
         `<div style="text-align:center;color:var(--error-color);padding:40px;max-width:800px;margin:0 auto;">
           <h2>❌ Error Loading Card</h2>
-          <p>Make sure <code>eco-battery-card.js</code> is in the same directory as this HTML file.</p>
+          <p>Make sure <code>smart-battery-card.js</code> is in the same directory as this HTML file.</p>
           <p style="font-family:monospace;font-size:12px;margin-top:20px;background:#222;padding:20px;border-radius:8px;">${error.message || error}</p>
         </div>`;
     }

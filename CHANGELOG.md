@@ -1,9 +1,24 @@
 # Changelog
 
-All notable changes to the Eco Battery Card will be documented in this file.
+All notable changes to the Smart Battery Card will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.4.0] - 2025-11-14
+
+### 🎉 Rebranding
+
+#### Name Change
+- **Renamed Project**: "EcoFlow Battery Card" → "Smart Battery Card"
+  - More generic name reflects universal battery support
+  - Works with any battery sensor: EcoFlow, Jackery, Tesla Powerwall, etc.
+  - Custom element renamed: `custom:eco-battery-card` → `custom:smart-battery-card`
+  - File renamed: `eco-battery-card.js` → `smart-battery-card.js`
+
+### ⚠️ Breaking Changes
+- **Custom Element Name**: You must update your configuration from `type: custom:eco-battery-card` to `type: custom:smart-battery-card`
+- **File Name**: Update HACS or manual installation to use `smart-battery-card.js`
 
 ## [0.3.0] - 2025-11-13
 
