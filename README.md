@@ -26,7 +26,7 @@ A custom Lovelace card for Home Assistant that displays battery levels with beau
 
 ### Quick Install
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lemannrus&repository=smart-battery-card&category=plugin)
+<p dir="auto"><a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=lemannrus&repository=smart-battery-card&category=plugin" rel="nofollow"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Add to HACS via My Home Assistant" style="max-width: 100%;"></a></p>
 
 ---
 
@@ -110,7 +110,7 @@ The card displays circular battery indicators with:
 
 ### HACS (Recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lemannrus&repository=smart-battery-card&category=plugin)
+<p dir="auto"><a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=lemannrus&repository=smart-battery-card&category=plugin" rel="nofollow"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Add to HACS via My Home Assistant" style="max-width: 100%;"></a></p>
 
 **Or manually:**
 
