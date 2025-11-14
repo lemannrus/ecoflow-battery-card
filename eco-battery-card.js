@@ -479,8 +479,7 @@ class EcoBatteryCard extends LitBase {
     text.setAttribute('class', 'time-text-square');
     text.setAttribute('fill', 'white');
 
-    const icon = remainingTime.type === 'charge' ? '🔌' : '🔋';
-    text.textContent = `${icon} ${remainingTime.time}`;
+    text.textContent = `${remainingTime.time}`;
 
     return text;
   }
@@ -520,7 +519,7 @@ class EcoBatteryCard extends LitBase {
           <!-- Time info inside circle (below percentage) -->
           ${remainingTime ? html`
             <div class="time-circle-text">
-              ${remainingTime.type === 'charge' ? '🔌' : '🔋'} ${remainingTime.time}
+              ${remainingTime.time}
             </div>
           ` : ''}
           
