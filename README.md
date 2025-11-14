@@ -22,6 +22,14 @@
 
 A custom Lovelace card for Home Assistant that displays battery levels with beautiful, animated circular battery indicators. Features smooth liquid-like fill animation with wave effects, multi-battery support, and intelligent outage management. Works with any battery sensor - EcoFlow, Jackery, Tesla Powerwall, or any other power station.
 
+---
+
+### Quick Install
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lemannrus&repository=smart-battery-card&category=plugin)
+
+---
+
 ## ✨ Features
 
 ### Multi-Battery Support (NEW in v0.3.0) 🔋🔋
@@ -102,9 +110,13 @@ The card displays circular battery indicators with:
 
 ### HACS (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=lemannrus&repository=smart-battery-card&category=plugin)
+
+**Or manually:**
+
 1. Open HACS in your Home Assistant instance
 2. Go to "Frontend" section
-3. Click the "+" button and search for "Eco Battery Card"
+3. Click the "+" button and search for "Smart Battery Card"
 4. Download and install the card
 5. Add the resource to your Lovelace configuration (HACS usually handles this automatically)
 
