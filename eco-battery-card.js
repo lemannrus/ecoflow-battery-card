@@ -1,7 +1,7 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
- * Author: ChatGPT (for Alex, who likes order in the battery chaos)
- * Version: 0.3.2
+ * Author: Alex Hryhor
+ * Version: 0.3.7
  *
  * Config example:
  * type: custom:eco-battery-card
@@ -404,30 +404,42 @@ class EcoBatteryCard extends LitBase {
   }
 
   /**
-   * Render status indicator circle below battery (for vertical layout)
+   * Render status indicator square below battery (for vertical layout)
    */
   _renderVerticalStatusIndicator(centerX, centerY, color, isConnected, statusIcon, isCharging, isDischarging) {
     const fillColor = isConnected ? 'var(--success-color, #43a047)' : color;
+    const squareSize = 36; // Size of the square
+    const innerSquareSize = 30;
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'status-indicator-vertical');
     g.setAttribute('transform', `translate(${centerX}, ${centerY})`);
 
-    // Outer ring
-    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    ring.setAttribute('class', 'status-ring-anim');
-    ring.setAttribute('r', '22');
-    ring.setAttribute('fill', 'none');
-    ring.setAttribute('stroke', fillColor);
-    ring.setAttribute('stroke-width', '2.5');
-    g.appendChild(ring);
+    // Outer square (border)
+    const outerSquare = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    outerSquare.setAttribute('class', 'status-square-border-anim');
+    outerSquare.setAttribute('x', -squareSize / 2);
+    outerSquare.setAttribute('y', -squareSize / 2);
+    outerSquare.setAttribute('width', squareSize);
+    outerSquare.setAttribute('height', squareSize);
+    outerSquare.setAttribute('rx', '5');
+    outerSquare.setAttribute('ry', '5');
+    outerSquare.setAttribute('fill', 'none');
+    outerSquare.setAttribute('stroke', fillColor);
+    outerSquare.setAttribute('stroke-width', '2');
+    g.appendChild(outerSquare);
 
-    // Inner circle
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('class', 'status-circle-anim');
-    circle.setAttribute('r', '18');
-    circle.setAttribute('fill', fillColor);
-    g.appendChild(circle);
+    // Inner square (filled)
+    const innerSquare = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    innerSquare.setAttribute('class', 'status-square-fill-anim');
+    innerSquare.setAttribute('x', -innerSquareSize / 2);
+    innerSquare.setAttribute('y', -innerSquareSize / 2);
+    innerSquare.setAttribute('width', innerSquareSize);
+    innerSquare.setAttribute('height', innerSquareSize);
+    innerSquare.setAttribute('rx', '3');
+    innerSquare.setAttribute('ry', '3');
+    innerSquare.setAttribute('fill', fillColor);
+    g.appendChild(innerSquare);
 
     // Icon text
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -435,7 +447,7 @@ class EcoBatteryCard extends LitBase {
     text.setAttribute('y', '0');
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'central');
-    text.setAttribute('font-size', '22');
+    text.setAttribute('font-size', '18');
     text.setAttribute('fill', 'white');
     text.setAttribute('font-weight', 'bold');
     text.textContent = statusIcon;
@@ -473,6 +485,7 @@ class EcoBatteryCard extends LitBase {
     return text;
   }
 
+
   /**
    * Render a single vertical battery with all components
    * Returns HTML template for one battery column
@@ -484,75 +497,44 @@ class EcoBatteryCard extends LitBase {
     const remainingTime = this._remainingTime(batteryIndex);
     const acOutPower = this._acOutPower(batteryIndex);
 
-    // Single square dimensions (increased for better visibility)
-    const squareSize = 140; // Width and height of the square
-    const svgPadding = 8;
-    const squareStartY = 45; // Leave space for name above
-
-    // Center X position
-    const centerX = squareSize / 2 + svgPadding;
-    const squareX = svgPadding;
-
-    // Calculate fill height based on percentage
-    const fillHeight = (squareSize * pct) / 100;
-    const fillY = squareStartY + squareSize - fillHeight;
-
     // Status determination
     const isCharging = remainingTime?.type === 'charge';
     const isDischarging = remainingTime?.type === 'discharge';
     const isConnected = !isCharging && !isDischarging && (battery.remaining_time_entity || battery.charge_remaining_time_entity);
     const statusIcon = isCharging ? '↑' : (isDischarging ? '↓' : (isConnected ? '⚡' : ''));
 
-    // Status circle position (below square)
-    const statusY = squareStartY + squareSize + 40;
-
-    // Total SVG dimensions
-    const svgWidth = squareSize + (svgPadding * 2);
-    const svgHeight = statusY + 35;
-
     return html`
       <div class="battery-column">
-        <svg class="battery-svg" viewBox="0 0 ${svgWidth} ${svgHeight}">
+        <div class="battery-container">
+          <!-- Circular battery with wave effect -->
+          <div class="water-round-container" style="--fill-height: ${pct}%; --fill-color: ${color};">
+            <div class="water-wave"></div>
+          </div>
+          
           <!-- Battery name -->
-          <text x="${centerX}" y="25" text-anchor="middle" class="battery-name" fill="var(--primary-text-color)">${battery.name || `Battery ${batteryIndex + 1}`}</text>
+          <div class="battery-name-text">${battery.name || `Battery ${batteryIndex + 1}`}</div>
           
-          <!-- Square container (background) -->
-          <rect 
-            x="${squareX}" 
-            y="${squareStartY}" 
-            width="${squareSize}" 
-            height="${squareSize}" 
-            rx="8" 
-            ry="8"
-            fill="rgba(50, 50, 50, 0.3)"
-            stroke="rgba(255, 255, 255, 0.3)"
-            stroke-width="2"
-            class="square-bg"
-          />
+          <!-- Percentage text (centered in circle, upper portion) -->
+          <div class="pct-circle-text">${pct.toFixed(this._config.precision)}%</div>
           
-          <!-- Fill rectangle (fills from bottom to top) -->
-          <rect 
-            x="${squareX + 3}" 
-            y="${fillY}" 
-            width="${squareSize - 6}" 
-            height="${fillHeight > 0 ? fillHeight : 0}" 
-            rx="6" 
-            ry="6"
-            fill="${color}"
-            class="square-fill"
-          />
+          <!-- Time info inside circle (below percentage) -->
+          ${remainingTime ? html`
+            <div class="time-circle-text">
+              ${remainingTime.type === 'charge' ? '⚡' : '⏱'} ${remainingTime.time}
+            </div>
+          ` : ''}
           
-          <!-- Percentage text (centered in square, upper portion) -->
-          <text x="${centerX}" y="${squareStartY + squareSize * 0.35}" text-anchor="middle" dominant-baseline="central" class="pct-square" fill="white">${pct.toFixed(this._config.precision)}%</text>
-          
-          <!-- Time info inside square (below percentage) - rendered programmatically -->
-          ${this._renderTimeText(centerX, squareStartY + squareSize * 0.65, remainingTime)}
-          
-          <!-- Status indicator -->
-          ${statusIcon ? this._renderVerticalStatusIndicator(centerX, statusY, color, isConnected, statusIcon, isCharging, isDischarging) : ''}
-        </svg>
+          <!-- Status indicator (positioned below the circle) -->
+          <div class="status-indicator-wrapper">
+            ${statusIcon ? html`
+              <svg width="50" height="50" viewBox="0 0 50 50" class="status-svg">
+                ${this._renderVerticalStatusIndicator(25, 25, color, isConnected, statusIcon, isCharging, isDischarging)}
+              </svg>
+            ` : ''}
+          </div>
+        </div>
         
-        <!-- Power info below status circle -->
+        <!-- Power info below status indicator -->
         ${acOutPower && acOutPower > 0 ? html`
           <div class="battery-power-below">
             <span class="power-value-below">${this._formatPower(acOutPower)}</span>
@@ -656,38 +638,92 @@ class EcoBatteryCard extends LitBase {
         align-items: center;
         gap: 8px;
       }
-      .battery-svg {
-        width: 100%;
-        max-width: 156px;
-        height: auto;
+      .battery-container {
+        position: relative;
+        width: 156px;
+        margin: 0 auto;
       }
-      .battery-name {
+      .water-round-container {
+        margin: 0 auto;
+        overflow: hidden;
+        position: relative;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: rgba(50, 50, 50, 0.3);
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      }
+      .water-wave {
+        position: absolute;
+        top: calc(100% - var(--fill-height, 0%));
+        left: -25%;
+        background: var(--fill-color);
+        opacity: 0.9;
+        width: 200%;
+        height: 200%;
+        border-radius: 40%;
+        -webkit-animation: water-waves 8s linear infinite;
+        animation: water-waves 8s linear infinite;
+        filter: drop-shadow(0 0 8px var(--fill-color)) drop-shadow(0 0 4px var(--fill-color));
+        transition: top 0.5s ease;
+      }
+      .battery-name-text {
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        transform: translateX(-50%);
         font-size: clamp(12px, 3vw, 16px);
         font-weight: 600;
-        fill: var(--primary-text-color);
+        color: var(--primary-text-color);
+        white-space: nowrap;
       }
-      .square-bg {
-        transition: all 0.3s ease;
-      }
-      .square-fill {
-        transition: height 0.5s ease, y 0.5s ease;
-        filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 4px currentColor);
-      }
-      .pct-square {
-        fill: white;
+      .pct-circle-text {
+        position: absolute;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
         font-weight: 700;
         font-size: clamp(24px, 7vw, 38px);
         text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,1);
         filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
         pointer-events: none;
+        z-index: 10;
       }
-      .time-text-square {
-        fill: white;
+      .time-circle-text {
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
         font-weight: 600;
         font-size: clamp(14px, 4vw, 20px);
         text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,1);
         filter: drop-shadow(0 0 3px rgba(255,255,255,0.4));
         pointer-events: none;
+        z-index: 10;
+        white-space: nowrap;
+      }
+      .status-indicator-wrapper {
+        position: relative;
+        height: 50px;
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: flex;
+        -webkit-box-pack: center;
+        -webkit-justify-content: center;
+        justify-content: center;
+        -webkit-box-align: center;
+        -webkit-align-items: center;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .status-svg {
+        display: block;
+        width: 50px;
+        height: 50px;
+        filter: drop-shadow(0 0 4px rgba(0,0,0,0.3));
       }
       .battery-power-below {
         display: -webkit-box;
@@ -829,13 +865,13 @@ class EcoBatteryCard extends LitBase {
       .status-indicator {
         filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
       }
-      .status-ring-anim {
+      .status-square-border-anim {
         opacity: 0.6;
-        animation: ringPulse 1.5s ease-in-out infinite;
+        animation: squareBorderPulse 1.5s ease-in-out infinite;
       }
-      .status-circle-anim {
+      .status-square-fill-anim {
         opacity: 0.9;
-        animation: circlePulse 1.5s ease-in-out infinite;
+        animation: squareFillPulse 1.5s ease-in-out infinite;
       }
       .status-icon-charging {
         filter: brightness(0) invert(1);
@@ -864,13 +900,29 @@ class EcoBatteryCard extends LitBase {
           opacity: 0.85;
         }
       }
-      @keyframes ringPulse {
+      @keyframes squareBorderPulse {
         0%, 100% { opacity: 0.6; transform: scale(1); }
         50% { opacity: 0.3; transform: scale(1.15); }
       }
-      @keyframes circlePulse {
+      @keyframes squareFillPulse {
         0%, 100% { opacity: 0.9; }
         50% { opacity: 1; }
+      }
+      @keyframes water-waves {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      @-webkit-keyframes water-waves {
+        0% {
+          -webkit-transform: rotate(0deg);
+        }
+        100% {
+          -webkit-transform: rotate(360deg);
+        }
       }
       @keyframes bounceUp {
         0%, 100% { transform: translateY(1.5px); }

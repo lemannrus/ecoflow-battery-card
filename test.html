@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eco Battery Card Test - v0.3.2 (Responsive Multi-Battery with Outage Management)</title>
+  <title>Eco Battery Card Test - v0.3.6 (Refined Status Indicator)</title>
   <style>
     :root {
       --primary-text-color: #e1e1e1;
@@ -82,17 +82,18 @@
 
 <body>
   <h1>🔋 Eco Battery Card Test Page</h1>
-  <div class="subtitle">Version 0.3.2 - Responsive multi-battery layout with outage management & fixed time display
+  <div class="subtitle">Version 0.3.6 - Refined status indicator sizing 🔄
   </div>
 
   <div
     style="text-align: center; margin: 20px auto; padding: 15px; background: rgba(67, 160, 71, 0.1); border-radius: 8px; max-width: 800px; border: 1px solid rgba(67, 160, 71, 0.3);">
-    <div style="font-size: 13px; color: var(--secondary-text-color); margin-bottom: 8px;">✨ What's New in v0.3.2</div>
+    <div style="font-size: 13px; color: var(--secondary-text-color); margin-bottom: 8px;">✨ What's New in v0.3.6</div>
     <div style="font-size: 12px; color: var(--primary-text-color); line-height: 1.6;">
-      • Fixed remaining time display (now renders correctly in SVG)<br>
-      • Responsive design: elements scale on smaller screens (resize your browser to test!)<br>
-      • Support for "outage"/"connected" states from Yasno integration<br>
-      • Font sizes use clamp() for smooth scaling across all screen sizes
+      • <strong>Better proportions</strong> for the status indicator square<br>
+      • Reduced size from 44px to 36px for more compact design<br>
+      • Icon size adjusted to 18px for better fit<br>
+      • Refined border radius and stroke width<br>
+      • CSS rotating wave animation from v0.3.5 retained
     </div>
   </div>
 

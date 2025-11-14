@@ -20,7 +20,7 @@
   </a>
 </p>
 
-A custom Lovelace card for Home Assistant that displays EcoFlow battery levels with a beautiful, animated battery icon. This card provides an intuitive visual representation of your EcoFlow power station's battery status with color-coded indicators.
+A custom Lovelace card for Home Assistant that displays EcoFlow battery levels with beautiful, animated circular battery indicators. Features smooth liquid-like fill animation with wave effects, multi-battery support, and intelligent outage management for power stations.
 
 ## ✨ Features
 
@@ -38,20 +38,23 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 - **Selected Battery for Outage Analysis**: Choose which battery to use for outage calculations
 - **Unified Outage Information**: One outage display for all batteries
 
-### Battery Display
-- **Vertical Battery Design**: SVG battery with segmented columns that fill bottom-to-top
-- **Color-Coded Status**: Green (good), yellow (warning), red (critical) battery levels
-- **Animated Status Indicator**: Pulsing circular badge below each battery showing state
-  - ↑ Color-matched circle with up arrow when charging
-  - ↓ Color-matched circle with down arrow when discharging
-  - ⚡ Green circle with lightning bolt when connected to power but idle
-  - Smooth pulsing ring animation
-  - Icons animate with motion
-- **Real-Time Power Display**: Shows current AC output power with automatic W/kW formatting
-- **Smart Time Display**: Automatically shows discharge time (⏱) or charge time (⚡)
-  - Discharge time displayed when battery is discharging
-  - Charge time displayed when battery is charging
-  - Automatically converts minutes to "Xh Ymin" format
+### Battery Display (v0.3.4 Design) 🌊
+- **Circular Battery Design**: Beautiful circular indicators with liquid-like fill animation
+  - Smooth fill from bottom to top with SVG clip-path technique
+  - **Wave Effect**: Animated curved wave at the top of the liquid fill
+  - Subtle pulsing animation creates natural liquid movement
+  - Color-coded fill: Green (good), yellow (warning), red (critical)
+- **Animated Status Indicator**: Pulsing rounded square badge below each battery
+  - ↑ Square with up arrow when charging
+  - ↓ Square with down arrow when discharging  
+  - ⚡ Green square with lightning bolt when connected but idle
+  - Smooth border and fill animations
+- **In-Battery Information**: All key data visible at a glance
+  - Battery name at the top
+  - Large percentage display in the center
+  - Remaining time (⏱ discharge or ⚡ charge) below percentage
+- **Real-Time Power Display**: AC output power shown below status indicator with automatic W/kW formatting
+- **Responsive Design**: Elements scale smoothly on all screen sizes using CSS clamp()
 
 ### Outage Management 🔌
 - **Smart Outage Analysis**: Intelligent monitoring and recommendations for power outages
@@ -88,10 +91,11 @@ A custom Lovelace card for Home Assistant that displays EcoFlow battery levels w
 
 ![Eco Battery Card screenshot](./assets/eco-battery-card.png)
 
-The card displays a battery icon with:
-- Battery outline and terminal cap
-- Vertical segments (columns) that fill left-to-right based on charge level
-- Optional percentage text overlay
+The card displays circular battery indicators with:
+- Smooth circular fill animation from bottom to top
+- Animated wave effect at the liquid surface
+- Percentage and time information centered inside the circle
+- Rounded square status indicator below with charging/discharging state
 - Theme-aware colors (uses your HA theme CSS variables)
 
 ## 📦 Installation
@@ -146,10 +150,7 @@ next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
 # Display settings
 green: 60
 yellow: 25
-show_state: true
 precision: 0
-segments: 5
-gap: 2
 palette: gradient
 ```
 
@@ -181,8 +182,6 @@ next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
 green: 60
 yellow: 25
 precision: 0
-segments: 5
-gap: 2
 palette: gradient
 ```
 
@@ -198,10 +197,7 @@ palette: gradient
 | `selected_battery` | number | `0` | Which battery to use for outage analysis (0 = first, 1 = second, etc.) |
 | `green` | number | `60` | Battery percentage threshold for green color (applied to all) |
 | `yellow` | number | `25` | Battery percentage threshold for yellow color (applied to all) |
-| `show_state` | boolean | `true` | Whether to display percentage text on batteries |
 | `precision` | number | `0` | Number of decimal places for percentage display |
-| `segments` | number | `5` | Number of vertical segments in each battery |
-| `gap` | number | `2` | Gap between segments in pixels |
 | `palette` | string | `threshold` | Color mode: `threshold` (red/yellow/green) or `gradient` |
 
 ### Battery Object (Array Item)
@@ -225,9 +221,12 @@ Each battery in the `batteries` array can have these properties:
 | `outage_end_time_entity` | string | `null` | Entity ID for outage end time. Supports ISO datetime format or Unix timestamp |
 | `next_outage_time_entity` | string | `null` | Entity ID for next scheduled outage start time. Supports ISO datetime format or Unix timestamp |
 
-**Note:** 
-- **v0.3.0**: Multi-battery support added! Use the `batteries` array to configure one or more batteries.
-- **v0.2.1+**: Charging time analysis uses your `charge_remaining_time_entity` sensor directly. No manual capacity/power configuration needed!
+**Version Notes:** 
+- **v0.3.4**: Circular battery design with animated wave effect on liquid fill
+- **v0.3.3**: Circular batteries + rounded square status indicators  
+- **v0.3.2**: Responsive design with auto-scaling elements
+- **v0.3.0**: Multi-battery support with vertical layout
+- **v0.2.1+**: Direct use of `charge_remaining_time_entity` - no manual capacity config needed
 
 ## 🔌 Compatible Sensors
 
@@ -262,11 +261,12 @@ Real-world example with EcoFlow Delta 2 and Yasno outage integration:
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.delta_2_main_battery_level
-name: EcoFlow Delta 2
-remaining_time_entity: sensor.delta_2_discharge_remaining_time
-charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
-ac_out_power_entity: sensor.delta_2_ac_out_power
+batteries:
+  - entity: sensor.delta_2_main_battery_level
+    name: EcoFlow Delta 2
+    remaining_time_entity: sensor.delta_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+    ac_out_power_entity: sensor.delta_2_ac_out_power
 outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
 outage_end_time_entity: sensor.yasno_kiiv_dtek_2_2_next_connectivity
 next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
@@ -276,21 +276,27 @@ palette: gradient
 ```
 
 The card will automatically show:
-- 🔵 **Animated status badge** on the right:
-  - ↑ Colored circle when charging (has charge remaining time)
-  - ↓ Colored circle when discharging (has discharge remaining time)
-  - ⚡ Green circle when connected to power but idle (neither charging nor discharging)
-- ⏱ **Discharge time** when battery is providing power (e.g., "5h 33min")
-- ⚡ **Charge time** when battery is charging (e.g., "2h 15min")
-- 🌊 **Animated energy flow** particles when power is being consumed
-- ⚡ **Power output** display (e.g., "Output: 1.2 kW")
+- 🔵 **Circular battery indicator** with:
+  - Liquid-like fill animation from bottom to top
+  - Animated wave effect at the surface
+  - Color changes based on charge level (green/yellow/red)
+- ⬜ **Rounded square status badge** below:
+  - ↑ With up arrow when charging
+  - ↓ With down arrow when discharging  
+  - ⚡ Green with lightning when connected but idle
+- 📊 **Inside the circle**:
+  - Battery percentage in large text
+  - ⏱ Discharge time when providing power (e.g., "5h 33min")
+  - ⚡ Charge time when charging (e.g., "2h 15min")
+- ⚡ **Power output** display below (e.g., "1.2 kW")
 
 ### Generic Battery Sensor
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.ups_battery_level  
-name: "UPS Battery"
+batteries:
+  - entity: sensor.ups_battery_level  
+    name: "UPS Battery"
 green: 90
 yellow: 50
 ```
@@ -397,13 +403,12 @@ If you're using the [**HA Yasno Outages**](https://github.com/denysdovhan/ha-yas
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.delta_2_main_battery_level
-name: EcoFlow Delta 2
-
-# Your EcoFlow sensors
-remaining_time_entity: sensor.delta_2_discharge_remaining_time
-charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
-ac_out_power_entity: sensor.delta_2_ac_out_power
+batteries:
+  - entity: sensor.delta_2_main_battery_level
+    name: EcoFlow Delta 2
+    remaining_time_entity: sensor.delta_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+    ac_out_power_entity: sensor.delta_2_ac_out_power
 
 # Yasno/DTEK sensors (replace with your city/group)
 outage_status_entity: sensor.yasno_kiiv_dtek_2_2_electricity
@@ -417,13 +422,12 @@ next_outage_time_entity: sensor.yasno_kiiv_dtek_2_2_next_planned_outage
 
 ```yaml
 type: custom:eco-battery-card
-entity: sensor.ecoflow_battery_level
-name: "EcoFlow Delta 2"
-
-# Standard battery sensors
-remaining_time_entity: sensor.delta_2_discharge_remaining_time
-charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
-ac_out_power_entity: sensor.delta_2_ac_out_power
+batteries:
+  - entity: sensor.ecoflow_battery_level
+    name: "EcoFlow Delta 2"
+    remaining_time_entity: sensor.delta_2_discharge_remaining_time
+    charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+    ac_out_power_entity: sensor.delta_2_ac_out_power
 
 # Outage integration sensors
 outage_status_entity: sensor.power_outage_status
@@ -543,9 +547,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Credits
 
+- **Author**: Alex Hryhor ([@lemannrus](https://github.com/lemannrus))
 - Built with Lit-based components for seamless Home Assistant integration
 - Designed for the Home Assistant community
 - HACS compatible for easy distribution and updates
+- Special thanks to [@denysdovhan](https://github.com/denysdovhan) for the [HA Yasno Outages](https://github.com/denysdovhan/ha-yasno-outages) integration
 
 ---
 
