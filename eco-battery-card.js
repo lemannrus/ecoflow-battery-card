@@ -1,38 +1,38 @@
 /*
  * Eco Battery Card for Home Assistant (no build step, HACS-friendly)
  * Author: Alex Hryhor
- * Version: 0.3.7
- *
- * Config example:
- * type: custom:eco-battery-card
- * batteries:
- *   - entity: sensor.delta_2_main_battery_level
- *     name: Delta 2
- *     remaining_time_entity: sensor.delta_2_discharge_remaining_time
- *     charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
- *     ac_out_power_entity: sensor.delta_2_ac_out_power
- *   - entity: sensor.river_2_battery_level
- *     name: River 2
- *     remaining_time_entity: sensor.river_2_discharge_remaining_time
- *     charge_remaining_time_entity: sensor.river_2_charge_remaining_time
- *     ac_out_power_entity: sensor.river_2_ac_out_power
- * 
- * selected_battery: 0  # Index of battery for outage analysis (0 = first battery)
- * 
- * # Outage settings (shared across all batteries)
- * outage_status_entity: sensor.outage_status
- * outage_end_time_entity: sensor.outage_end_time
- * next_outage_time_entity: sensor.next_outage_time
- * 
- * # Display settings (applied to all batteries)
- * green: 60
- * yellow: 25
- * palette: gradient
- * segments: 5
- * gap: 3
- * precision: 0
- * show_state: true
- */
+ * Version: 0.3.8
+*
+* Config example:
+* type: custom:eco-battery-card
+* batteries:
+*   - entity: sensor.delta_2_main_battery_level
+*     name: Delta 2
+*     remaining_time_entity: sensor.delta_2_discharge_remaining_time
+*     charge_remaining_time_entity: sensor.delta_2_charge_remaining_time
+*     ac_out_power_entity: sensor.delta_2_ac_out_power
+*   - entity: sensor.river_2_battery_level
+*     name: River 2
+*     remaining_time_entity: sensor.river_2_discharge_remaining_time
+*     charge_remaining_time_entity: sensor.river_2_charge_remaining_time
+*     ac_out_power_entity: sensor.river_2_ac_out_power
+* 
+* selected_battery: 0  # Index of battery for outage analysis (0 = first battery)
+* 
+* # Outage settings (shared across all batteries)
+* outage_status_entity: sensor.outage_status
+* outage_end_time_entity: sensor.outage_end_time
+* next_outage_time_entity: sensor.next_outage_time
+* 
+* # Display settings (applied to all batteries)
+* green: 60
+* yellow: 25
+* palette: gradient
+* segments: 5
+* gap: 3
+* precision: 0
+* show_state: true
+*/
 
 /* Lit helpers from HA (pattern used by many cards) */
 const LitBase = customElements.get('ha-panel-lovelace')
@@ -479,7 +479,7 @@ class EcoBatteryCard extends LitBase {
     text.setAttribute('class', 'time-text-square');
     text.setAttribute('fill', 'white');
 
-    const icon = remainingTime.type === 'charge' ? '⚡' : '⏱';
+    const icon = remainingTime.type === 'charge' ? '🔌' : '🔋';
     text.textContent = `${icon} ${remainingTime.time}`;
 
     return text;
@@ -520,7 +520,7 @@ class EcoBatteryCard extends LitBase {
           <!-- Time info inside circle (below percentage) -->
           ${remainingTime ? html`
             <div class="time-circle-text">
-              ${remainingTime.type === 'charge' ? '⚡' : '⏱'} ${remainingTime.time}
+              ${remainingTime.type === 'charge' ? '🔌' : '🔋'} ${remainingTime.time}
             </div>
           ` : ''}
           
@@ -572,7 +572,7 @@ class EcoBatteryCard extends LitBase {
             </div>
           ` : ''}
           
-          <!-- Current Outage Info -->
+          <!-- Current Outage Info (show only if active) -->
           ${outageStatus.isActive && outageStatus.endTime ? html`
             <div class="outage-compact">
               <div class="outage-compact-header">
@@ -589,12 +589,12 @@ class EcoBatteryCard extends LitBase {
             </div>
           ` : ''}
           
-          <!-- Next Outage Info (always show if available) -->
-          ${nextOutage.startTime ? html`
+          <!-- Next Outage Info (show only if no active outage) -->
+          ${!outageStatus.isActive && nextOutage.startTime ? html`
             <div class="outage-compact outage-next">
               <div class="outage-compact-header">
                 <span class="outage-icon">📅</span>
-                <span class="outage-label">${outageStatus.isActive ? 'Next Outage After This' : 'Next Outage'}</span>
+                <span class="outage-label">Next Outage</span>
               </div>
               <div class="outage-compact-info">
                 <span class="compact-value-lg">${this._formatDateTime(nextOutage.startTime)}</span>
@@ -642,6 +642,7 @@ class EcoBatteryCard extends LitBase {
         position: relative;
         width: 156px;
         margin: 0 auto;
+        padding-top: 30px;
       }
       .water-round-container {
         margin: 0 auto;
@@ -657,7 +658,7 @@ class EcoBatteryCard extends LitBase {
       .water-wave {
         position: absolute;
         top: calc(100% - var(--fill-height, 0%));
-        left: -25%;
+        left: -45%;
         background: var(--fill-color);
         opacity: 0.9;
         width: 200%;
@@ -670,17 +671,19 @@ class EcoBatteryCard extends LitBase {
       }
       .battery-name-text {
         position: absolute;
-        top: -25px;
+        top: 5px;
         left: 50%;
         transform: translateX(-50%);
         font-size: clamp(12px, 3vw, 16px);
         font-weight: 600;
         color: var(--primary-text-color);
         white-space: nowrap;
+        z-index: 10;
+        pointer-events: none;
       }
       .pct-circle-text {
         position: absolute;
-        top: 40px;
+        top: 70px;
         left: 50%;
         transform: translateX(-50%);
         color: white;
@@ -693,7 +696,7 @@ class EcoBatteryCard extends LitBase {
       }
       .time-circle-text {
         position: absolute;
-        top: 90px;
+        top: 120px;
         left: 50%;
         transform: translateX(-50%);
         color: white;
@@ -784,7 +787,8 @@ class EcoBatteryCard extends LitBase {
         font-size: 14px;
       }
       .outage-info-container {
-        margin-top: 8px;
+        margin-top: 12px;
+        clear: both;
       }
       
       /* Old horizontal layout styles (keep for compatibility) */
