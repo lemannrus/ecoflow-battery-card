@@ -702,7 +702,6 @@ class EcoBatteryCard extends LitBase {
         text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8), 0 0 3px rgba(0,0,0,1);
         filter: drop-shadow(0 0 3px rgba(255,255,255,0.4));
         pointer-events: none;
-        z-index: 10;
         white-space: nowrap;
       }
       .status-indicator-wrapper {
